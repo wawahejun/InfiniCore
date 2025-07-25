@@ -15,6 +15,7 @@ DECLARE_INFINIOP_TEST(swiglu)
 DECLARE_INFINIOP_TEST(add)
 DECLARE_INFINIOP_TEST(causal_softmax)
 DECLARE_INFINIOP_TEST(rearrange)
+DECLARE_INFINIOP_TEST(silu)
 DECLARE_INFINIOP_TEST(sub)
 DECLARE_INFINIOP_TEST(zeros)
 DECLARE_INFINIOP_TEST(ones)
@@ -53,6 +54,7 @@ DECLARE_INFINIOP_TEST(topksoftmax)
         REGISTER_INFINIOP_TEST(sigmoid)        \
         REGISTER_INFINIOP_TEST(topkrouter)     \
         REGISTER_INFINIOP_TEST(topksoftmax)    \
+        REGISTER_INFINIOP_TEST(silu)           \
     }
 
 namespace infiniop_test {
