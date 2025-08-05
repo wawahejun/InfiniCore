@@ -12,6 +12,17 @@ auto Handle::internal() const -> const std::shared_ptr<Internal> & {
 
 infiniStatus_t Handle::create(InfiniopHandle **handle_ptr, int device_id) {
     *handle_ptr = new Handle(device_id);
+}
+
+infiniStatus_t Handle::Internal::useCublas(cudaStream_t stream, const Fn<cublasHandle_t> &f) const {
+
+    auto handle = blas_handles.pop();
+    if (!handle) {
+        CHECK_CUBLAS(cublasCreate(&(*handle)));
+    }
+    CHECK_CUBLAS(cublasSetStream(*handle, stream));
+    CHECK_STATUS(f(*handle));
+    blas_handles.push(std::move(*handle));
     return INFINI_STATUS_SUCCESS;
 }
 

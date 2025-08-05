@@ -23,11 +23,13 @@ public:
 
 class Handle::Internal {
     Pool<xdnnHandle_t> dnn_handles;
+    Pool<cublasHandle_t> blas_handles;
     template <typename T>
     using Fn = std::function<infiniStatus_t(T)>;
 
 public:
     infiniStatus_t useXdnn(kunlunStream_t stream, const Fn<xdnnHandle_t> &f) const;
+    infiniStatus_t useCublas(cudaStream_t stream, const Fn<cublasHandle_t> &f) const;
 };
 
 } // namespace device::kunlun

@@ -13,5 +13,6 @@ typedef XPUEvent kunlunEvent_t;
 typedef xdnn::Context *xdnnHandle_t;
 
 #define CHECK_KUNLUN(API) CHECK_INTERNAL(API, XPU_SUCCESS)
+#define CHECK_CUBLAS(API) CHECK_INTERNAL(API, CUBLAS_STATUS_SUCCESS)
 
 #endif
