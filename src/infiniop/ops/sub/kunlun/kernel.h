@@ -1,5 +1,5 @@
-#ifndef __ADD_KUNLUN_KERNEL_H__
-#define __ADD_KUNLUN_KERNEL_H__
+#ifndef __SUB_KUNLUN_KERNEL_H__
+#define __SUB_KUNLUN_KERNEL_H__
 
 namespace op::sub::kunlun {
 
@@ -22,4 +22,4 @@ public:
 
 } // namespace op::sub::kunlun
 
-#endif // __ADD_KUNLUN_KERNEL_H__
+#endif // __SUB_KUNLUN_KERNEL_H__
