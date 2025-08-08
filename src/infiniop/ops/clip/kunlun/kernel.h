@@ -12,7 +12,6 @@ public:
         T x = inputs[0];
         T min_val = inputs[1];
         T max_val = inputs[2];
-        // printf("x: %f, min_val: %f, max_val: %f, result: %f\n", x, min_val, max_val, fmax(fmin(x, max_val), min_val));
         return fmax(fmin(x, max_val), min_val);
     }
 
