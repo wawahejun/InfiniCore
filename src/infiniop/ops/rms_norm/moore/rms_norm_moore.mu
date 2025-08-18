@@ -1,7 +1,7 @@
-#include "../../../devices/musa/common_musa.h"
-#include "rms_norm_musa.h"
+#include "../../../devices/moore/moore_common.h"
+#include "rms_norm_moore.h"
 
-#include "../../../devices/musa/musa_kernel_common.h"
+#include "../../../devices/moore/moore_kernel_common.h"
 #include <cub/block/block_reduce.cuh>
 
 #include "../../../reduce/cuda/reduce.cuh"
@@ -9,7 +9,7 @@
 #include "../cuda/kernel.cuh"
 
 template <unsigned int BLOCK_SIZE, typename Tcompute, typename Tdata, typename Tweight>
-INFINIOP_MUSA_KERNEL rmsnormKernel(
+INFINIOP_MOORE_KERNEL rmsnormKernel(
     Tdata *__restrict__ y,
     ptrdiff_t stride_y,
     const Tdata *__restrict__ x,
@@ -20,10 +20,10 @@ INFINIOP_MUSA_KERNEL rmsnormKernel(
     rmsnormBlock<BLOCK_SIZE, Tcompute>(y, stride_y, x, stride_x, w, dim, epsilon);
 }
 
-namespace op::rms_norm::musa {
+namespace op::rms_norm::moore {
 
 struct Descriptor::Opaque {
-    std::shared_ptr<device::musa::Handle::Internal> internal;
+    std::shared_ptr<device::moore::Handle::Internal> internal;
 };
 
 Descriptor::~Descriptor() {
@@ -47,7 +47,7 @@ infiniStatus_t Descriptor::create(
     }
 
     *desc_ptr = new Descriptor(
-        new Opaque{reinterpret_cast<device::musa::Handle *>(handle)->internal()},
+        new Opaque{reinterpret_cast<device::moore::Handle *>(handle)->internal()},
         std::move(info),
         0,
         handle->device, handle->device_id);
@@ -109,15 +109,15 @@ infiniStatus_t Descriptor::calculate(
     auto musa_stream = reinterpret_cast<musaStream_t>(stream);
 
     // launch kernel with different block sizes
-    if (_opaque->internal->maxThreadsPerBlock() == MUSA_BLOCK_SIZE_1024) {
-        CHECK_STATUS(launchKernel<MUSA_BLOCK_SIZE_1024>(batch_size, dim, y, _info.atype, stride_y, x, stride_x, w, _info.wtype, _info.epsilon, musa_stream));
-    } else if (_opaque->internal->maxThreadsPerBlock() == MUSA_BLOCK_SIZE_512) {
-        CHECK_STATUS(launchKernel<MUSA_BLOCK_SIZE_512>(batch_size, dim, y, _info.atype, stride_y, x, stride_x, w, _info.wtype, _info.epsilon, musa_stream));
-    } else if (_opaque->internal->maxThreadsPerBlock() == MUSA_BLOCK_SIZE_2048) {
-        CHECK_STATUS(launchKernel<MUSA_BLOCK_SIZE_2048>(batch_size, dim, y, _info.atype, stride_y, x, stride_x, w, _info.wtype, _info.epsilon, musa_stream));
+    if (_opaque->internal->maxThreadsPerBlock() == MOORE_BLOCK_SIZE_1024) {
+        CHECK_STATUS(launchKernel<MOORE_BLOCK_SIZE_1024>(batch_size, dim, y, _info.atype, stride_y, x, stride_x, w, _info.wtype, _info.epsilon, musa_stream));
+    } else if (_opaque->internal->maxThreadsPerBlock() == MOORE_BLOCK_SIZE_512) {
+        CHECK_STATUS(launchKernel<MOORE_BLOCK_SIZE_512>(batch_size, dim, y, _info.atype, stride_y, x, stride_x, w, _info.wtype, _info.epsilon, musa_stream));
+    } else if (_opaque->internal->maxThreadsPerBlock() == MOORE_BLOCK_SIZE_2048) {
+        CHECK_STATUS(launchKernel<MOORE_BLOCK_SIZE_2048>(batch_size, dim, y, _info.atype, stride_y, x, stride_x, w, _info.wtype, _info.epsilon, musa_stream));
     } else {
         return INFINI_STATUS_DEVICE_ARCHITECTURE_NOT_SUPPORTED;
     }
     return INFINI_STATUS_SUCCESS;
 }
-} // namespace op::rms_norm::musa
+} // namespace op::rms_norm::moore
