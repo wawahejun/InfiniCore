@@ -2,9 +2,12 @@
 #define __INFINIOP_ELEMENTWISE_CUDA_H__
 
 #include "../../../utils.h"
+#include "elementwise_nvidia_api.cuh"
+
+#ifdef __CUDACC__
+
 #include "../../devices/nvidia/nvidia_common.cuh"
 #include "../../devices/nvidia/nvidia_kernel_common.cuh"
-#include "elementwise_nvidia_api.cuh"
 
 namespace op::elementwise::nvidia {
 
@@ -265,9 +268,9 @@ private:
      * @param info                   Elementwise operation metadata (shapes, strides, flags, etc.).
      * @param workspace              Pointer to device workspace memory for storing metadata and input pointers.
      * @param h_inputs_arr           Host array of input tensor pointers.
-     * @param d_inputs_arr           Input reference to device array of input tensor pointers.
-     * @param d_input_contiguous     Input reference to device array indicating whether each input is contiguous.
-     * @param d_input_broadcasted    Input reference to device array indicating whether each input is broadcasted.
+     * @param d_inputs_arr           Output reference to device array of input tensor pointers.
+     * @param d_input_contiguous     Output reference to device array indicating whether each input is contiguous.
+     * @param d_input_broadcasted    Output reference to device array indicating whether each input is broadcasted.
      * @param d_output_shape         Output reference to device array holding the output tensor shape.
      * @param d_output_strides       Output reference to device array holding output tensor strides.
      * @param d_input_shapes         Output reference to flattened input tensor shapes (N * ndim).
@@ -295,7 +298,10 @@ private:
         const int8_t *info_meta_start = info.getMetaStart();
         const int8_t *d_meta_start = reinterpret_cast<int8_t *>(workspace) + input_arr_size;
 
+        printf("workspace=%p, h_inputs_arr=%p, input_arr_size=%lu, d_meta_start=%p, meta_mem_size=%lu\n", workspace, h_inputs_arr, input_arr_size, d_meta_start, info.getMetaMemSize());
+        
         // copy the input pointer array and meta to device
+        printf("h_inputs_arr=%p, input_arr_size=%lu, d_meta_start=%p, meta_mem_size=%lu\n", h_inputs_arr, input_arr_size, d_meta_start, info.getMetaMemSize());
         CHECK_CUDA(cudaMemcpyAsync(workspace, h_inputs_arr, input_arr_size, cudaMemcpyHostToDevice, stream));
         CHECK_CUDA(cudaMemcpyAsync((void *)d_meta_start, info_meta_start, info.getMetaMemSize(), cudaMemcpyHostToDevice, stream));
 
@@ -415,5 +421,7 @@ infiniStatus_t DeviceImpl::calculate(const op::elementwise::ElementwiseInfo &inf
 }
 
 } // namespace op::elementwise::nvidia
+
+#endif // __CUDACC__
 
 #endif // __INFINIOP_ELEMENTWISE_CUDA_H__
