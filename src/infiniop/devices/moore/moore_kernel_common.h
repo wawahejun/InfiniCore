@@ -1,20 +1,20 @@
-#define INFINIOP_MUSA_KERNEL __global__ void
+#define INFINIOP_MOORE_KERNEL __global__ void
 
 #include <musa_bf16.h>
 #include <musa_fp16.h>
 
 // Posible maximum number of threads per block for MUSA architectures
 // Used for picking correct kernel launch configuration
-#define MUSA_BLOCK_SIZE_2048 2048
-#define MUSA_BLOCK_SIZE_1024 1024
-#define MUSA_BLOCK_SIZE_512 512
+#define MOORE_BLOCK_SIZE_2048 2048
+#define MOORE_BLOCK_SIZE_1024 1024
+#define MOORE_BLOCK_SIZE_512 512
 
-#define CHECK_MUSA(API) CHECK_INTERNAL(API, musaSuccess)
+#define CHECK_MOORE(API) CHECK_INTERNAL(API, musaSuccess)
 
 using musa_bfloat16 = mt_bfloat16;
 using musa_bfloat162 = mt_bfloat162;
 
-namespace device::musa {
+namespace device::moore {
 
 // return the memory offset of original tensor, given the flattened index of broadcasted tensor
 __forceinline__ __device__ __host__ size_t
@@ -45,7 +45,7 @@ indexToOffset(
     }
     return res;
 }
-} // namespace device::musa
+} // namespace device::moore
 
 __forceinline__ __device__ float
 exp_(const float val) {

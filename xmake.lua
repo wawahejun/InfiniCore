@@ -119,7 +119,7 @@ option_end()
 
 if has_config("moore-gpu") then
     add_defines("ENABLE_MOORE_API")
-    includes("xmake/musa.lua")
+    includes("xmake/moore.lua")
 end
 
 -- 海光
