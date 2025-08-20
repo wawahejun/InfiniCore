@@ -10,7 +10,6 @@
 #include <xpu/kernel/xtdk_simd.h>
 #include <xpu/kernel/xtdk_trigonometric.h>
 
-// #include <xpu/kernel/xtdk_io.h>
 namespace device::kunlun::kernel {
 
 #define SM_SIZE 10240
