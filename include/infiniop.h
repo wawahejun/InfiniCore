@@ -12,7 +12,6 @@
 #include "infiniop/ops/cos.h"
 #include "infiniop/ops/crossentropyloss_backward.h"
 #include "infiniop/ops/div.h"
-#include "infiniop/ops/eq.h"
 #include "infiniop/ops/equal.h"
 #include "infiniop/ops/exp.h"
 #include "infiniop/ops/gelu.h"
