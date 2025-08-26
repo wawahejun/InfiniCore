@@ -1,5 +1,5 @@
-#ifndef KUNLUN_COMMON_H
-#define KUNLUN_COMMON_H
+#ifndef __KUNLUN_COMMON_H__
+#define __KUNLUN_COMMON_H__
 
 #include "../../../utils.h"
 #include <xpu/runtime.h>
