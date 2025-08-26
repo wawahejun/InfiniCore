@@ -1,5 +1,6 @@
-// #include "../pool.h"
-// #include "kunlun_handle.h"
+#ifndef KUNLUN_COMMON_H
+#define KUNLUN_COMMON_H
+
 #include "../../../utils.h"
 #include <xpu/runtime.h>
 #include <xpu/runtime_ex.h>
@@ -12,3 +13,5 @@ typedef XPUEvent kunlunEvent_t;
 typedef xdnn::Context *xdnnHandle_t;
 
 #define CHECK_KUNLUN(API) CHECK_INTERNAL(API, XPU_SUCCESS)
+
+#endif
