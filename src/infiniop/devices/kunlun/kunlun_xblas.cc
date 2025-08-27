@@ -1,6 +1,6 @@
-#include "kunlun_handle.h"
+#include "kunlun_xblas.h"
 
-namespace device::kunlun {
+namespace device::kunlun::blas {
 
 Handle::Handle(int device_id)
     : InfiniopHandle{INFINI_DEVICE_KUNLUN, device_id},
@@ -15,15 +15,16 @@ infiniStatus_t Handle::create(InfiniopHandle **handle_ptr, int device_id) {
     return INFINI_STATUS_SUCCESS;
 }
 
-infiniStatus_t Handle::Internal::useXdnn(kunlunStream_t stream, const Fn<xdnnHandle_t> &f) const {
-    auto handle = dnn_handles.pop();
+infiniStatus_t Handle::Internal::useCublas(cudaStream_t stream, const Fn<cublasHandle_t> &f) const {
+
+    auto handle = blas_handles.pop();
     if (!handle) {
-        *handle = xdnn::create_context();
+        CHECK_CUBLAS(cublasCreate(&(*handle)));
     }
-    (*handle)->set_stream(stream);
+    CHECK_CUBLAS(cublasSetStream(*handle, stream));
     CHECK_STATUS(f(*handle));
-    dnn_handles.push(std::move(*handle));
+    blas_handles.push(std::move(*handle));
     return INFINI_STATUS_SUCCESS;
 }
 
-} // namespace device::kunlun
+} // namespace device::kunlun::blas
