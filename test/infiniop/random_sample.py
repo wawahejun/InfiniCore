@@ -54,7 +54,8 @@ NUM_ITERATIONS = 1000
 def random_sample(data, random_val, topp, topk, voc, temperature):
     if topp > 0 and topk > 1:
         sorted_vals, sorted_indices = torch.sort(data, descending=True)
-
+        print(sorted_vals[:topk])
+        print(sorted_indices[:topk])
         scaled_vals = (sorted_vals - sorted_vals[0]) / temperature
         try:
             probs = torch.softmax(scaled_vals, dim=0)
@@ -157,7 +158,7 @@ def test(
 
     if sync is not None:
         sync()
-
+    print(indices.actual_tensor(), ans)
     atol, rtol = get_tolerance(_TOLERANCE_MAP, dtype)
     if DEBUG:
         debug_all(
