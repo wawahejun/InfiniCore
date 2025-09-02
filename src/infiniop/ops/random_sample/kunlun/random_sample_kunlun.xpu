@@ -570,8 +570,8 @@ infiniStatus_t Descriptor::create(
     int cluster_num = 8;
     int core_num = 64;
     int n = probs_desc->numel();
-    int topk = 50;//必须想办法控制workspace大小，如果topk太大会导致无法申请进而结果报错
-    size_t workspace_size = (n + cluster_num * core_num * topk) * (infiniSizeOf(probs_desc->dtype()) + infiniSizeOf(result_desc->dtype())) + cluster_num * sizeof(float);
+    
+    size_t workspace_size = (n + cluster_num * core_num * n) * (infiniSizeOf(probs_desc->dtype()) + infiniSizeOf(result_desc->dtype())) + cluster_num * sizeof(float);
     *desc_ptr = new Descriptor(
         info,
         workspace_size,
