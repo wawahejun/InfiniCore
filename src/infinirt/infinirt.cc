@@ -6,7 +6,7 @@
 #include "cuda/infinirt_cuda.cuh"
 #include "kunlun/infinirt_kunlun.h"
 #include "metax/infinirt_metax.h"
-#include "musa/infinirt_musa.h"
+#include "moore/infinirt_moore.h"
 
 thread_local infiniDevice_t CURRENT_DEVICE_TYPE = INFINI_DEVICE_CPU;
 thread_local int CURRENT_DEVICE_ID = 0;
