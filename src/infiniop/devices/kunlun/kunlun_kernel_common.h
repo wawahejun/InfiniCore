@@ -37,22 +37,6 @@ inline __device__ float lowerBitMask(int i) {
     return (1 << (i + 1)) - 1;
 }
 
-/**
- * @brief Load data from shared memory
- * @param p: pointer to shared memory
- * @return loaded value
- */
-template <typename T>
-__device__ inline T loadsm(__shared_ptr__ const T *p) {
-    T v;
-    if constexpr (std::is_same<T, half>::value
-                  || std::is_same<T, bfloat16_t>::value) {
-        __builtin_memcpy(&v, p, sizeof(T));
-    } else {
-        v = *p;
-    }
-    return v;
-}
 // Load len data from shared memory
 template <typename T>
 __device__ inline void loadsm(__shared_ptr__ const T *p, T *v, int len) {
@@ -89,7 +73,7 @@ inline __device__ T atomicAdd(__shared_ptr__ T *ptr, T value) {
 template <>
 inline __device__ half atomicAdd<half>(__shared_ptr__ half *ptr, half value) {
     ticket_lock_mix();
-    __half old = loadsm(ptr);
+    half old = *ptr;
     float of = __half2float(old);
     float vf = __half2float(value);
     float sumf = of + vf;
@@ -103,7 +87,7 @@ inline __device__ half atomicAdd<half>(__shared_ptr__ half *ptr, half value) {
 template <>
 inline __device__ bfloat16_t atomicAdd<bfloat16_t>(__shared_ptr__ bfloat16_t *ptr, bfloat16_t value) {
     ticket_lock_mix();
-    bfloat16_t old = loadsm(ptr);
+    bfloat16_t old = *ptr;
     float of = __bfloat162float(old);
     float vf = __bfloat162float(value);
     float sumf = of + vf;
@@ -122,7 +106,7 @@ inline __device__ bfloat16_t atomicAdd<bfloat16_t>(__shared_ptr__ bfloat16_t *pt
 template <typename T>
 inline __device__ T atomicMax(__shared_ptr__ T *ptr, T value) {
     ticket_lock_mix();
-    T old = loadsm(ptr);
+    T old = *ptr;
     if constexpr (std::is_same<T, bfloat16_t>::value) {
         float of = __bfloat162float(old);
         float vf = __bfloat162float(value);

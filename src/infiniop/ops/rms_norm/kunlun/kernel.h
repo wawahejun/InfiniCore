@@ -25,8 +25,8 @@ __device__ void rmsnormBlock(
 
     // Copy contiguous x, w into local mem (load from shared memory safely)
     for (size_t i = core_id(); i < dim; i += BLOCK_SIZE) {
-        Tdata xi = loadsm(x + i);
-        Tweight wi = loadsm(w + i);
+        Tdata xi = x[i];
+        Tweight wi = w[i];
         y[i] = static_cast<Tdata>(to<Tcompute>(xi) * to<Tcompute>(wi) * rms);
     }
     sync_cluster();

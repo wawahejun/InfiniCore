@@ -31,7 +31,7 @@ __device__ void causalSoftmaxBlock(
         //  height: 3  col_id->
         if (width + size_t(row_id) >= col + height) {
             if constexpr (std::is_same_v<Tdata, half>) {
-                y[col] = hexp(loadsm(x + col) - loadsm(&max_));
+                y[col] = hexp(x[col] - max_);
             } else if constexpr (std::is_same_v<Tdata, bfloat16_t>) {
                 y[col] = __float2bfloat16(exp(__bfloat162float(x[col]) - __bfloat162float(max_)));
             } else {
@@ -54,7 +54,7 @@ __device__ void causalSoftmaxBlock(
     // Apply softmax
     for (size_t col = core_id(); col < width; col += BLOCK_SIZE) {
         if (sum_ != 0) {
-            y[col] = to<Tdata>(to<Tcompute>(loadsm(y + col)) / sum_);
+            y[col] = to<Tdata>(to<Tcompute>(y[col]) / sum_);
         } else {
             y[col] = Tdata(0);
         }
