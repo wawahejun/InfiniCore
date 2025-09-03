@@ -44,22 +44,6 @@ __device__ inline void loadsm(__shared_ptr__ const T *p, T *v, int len) {
 }
 
 /**
- * @brief Convert data type. All data is in local memory
- * @param v: input value
- * @return output value
- */
-template <typename Tout, typename Tin>
-__device__ inline Tout to(Tin v) {
-    if constexpr (std::is_same<Tin, half>::value) {
-        return __half2float(v);
-    } else if constexpr (std::is_same<Tin, bfloat16_t>::value) {
-        return __bfloat162float(v);
-    } else {
-        return static_cast<Tout>(v);
-    }
-}
-
-/**
  * @brief atomicAdd for kunlun xpu
  * @param ptr: pointer to shared memory
  * @param value: value to add
