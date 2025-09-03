@@ -45,8 +45,7 @@ void launchKernel(void *workspace,
                                                                                             values,
                                                                                             indices_global,
                                                                                             values_global,
-                                                                                            sum_global); 
-        xpu_wait(stream);           
+                                                                                            sum_global);           
     }
     
     else{
@@ -54,8 +53,7 @@ void launchKernel(void *workspace,
                                     indices,
                                     values,
                                     indices_global,
-                                    values_global);
-        xpu_wait(stream);                            
+                                    values_global);                           
     }    
                                                                            
 }
