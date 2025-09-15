@@ -106,11 +106,7 @@ struct InputIndexer {
         size_t global_idx = idx + element_idx;
         return input_contiguous[input_id]
                  ? global_idx // Simple case: contiguous memory
-                 : (input_broadcasted[input_id]
-                        // Handle broadcasted case
-                        ? indexToReducedOffset(global_idx, ndim, output_strides, input_strides + input_id * ndim)
-                        // General non-contiguous case
-                        : indexToOffset(global_idx, ndim, input_shapes + input_id * ndim, input_strides + input_id * ndim));
+                 : indexToOffset(global_idx, ndim, input_shapes + input_id * ndim, input_strides + input_id * ndim);
     }
 };
 
