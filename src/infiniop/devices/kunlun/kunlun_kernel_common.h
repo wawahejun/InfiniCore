@@ -106,27 +106,6 @@ inline __device__ T atomicMax(__shared_ptr__ T *ptr, T value) {
 }
 
 /**
- * @brief Get index of broadcasted input
- * flat_index: flatten index of output tensor
- * ndim: dim of output tensor
- * broadcasted_strides: strides of output tensor
- * target_strides: strides of input tensor
- */
-inline __device__ int indexToReducedOffset(
-    int flat_index,                        // output flatten index
-    int ndim,                              // output dims
-    const _ptrdiff_t *broadcasted_strides, // output strides
-    const _ptrdiff_t *target_strides) {    // strides of inputs
-
-    int res = 0;
-    for (int i = 0; i < ndim; ++i) {
-        res += flat_index / broadcasted_strides[i].value * target_strides[i].value;
-        flat_index %= broadcasted_strides[i].value;
-    }
-    return res;
-}
-
-/**
  * @brief Get real offset of input index
  * flat_index: flatten index input
  * ndim: dim of input tensor
