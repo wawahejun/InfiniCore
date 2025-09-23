@@ -140,7 +140,7 @@ AWQ_ORDER = [0, 2, 4, 6, 1, 3, 5, 7]
 AWQ_REVERSE_ORDER = [0, 4, 1, 5, 2, 6, 3, 7]
 
 
-def dequantize(
+def dequantize_awq(
     qweight: torch.Tensor,
     qzeros: torch.Tensor,
     qscales: torch.Tensor,
@@ -216,7 +216,7 @@ def test(
     sync=None,
 ):
     print(
-        f"Testing Dequantize on {InfiniDeviceNames[device]} with bits:{bits}, group_size:{group_size},"
+        f"Testing Dequantize AWQ on {InfiniDeviceNames[device]} with bits:{bits}, group_size:{group_size},"
         f" qweights_shape:{qweights_shape}, qzeros_shape:{qzeros_shape}, qscales_shape:{qscales_shape},"
         f" qweights_stride:{qweights_stride}, qzeros_stride:{qzeros_stride}, qscales_stride:{qscales_stride},"
         f" qweights_dtype:{InfiniDtypeNames[qweights_dtype]}, qzeros_dtype:{InfiniDtypeNames[qzeros_dtype]}, qscales_dtype:{InfiniDtypeNames[qscales_dtype]}"
@@ -225,14 +225,16 @@ def test(
     qweights = TestTensor(
         qweights_shape, qweights_stride, qweights_dtype, device, mode="randint"
     )
-    qzeros = TestTensor(qzeros_shape, qzeros_stride, qzeros_dtype, device, mode="randint")
+    qzeros = TestTensor(
+        qzeros_shape, qzeros_stride, qzeros_dtype, device, mode="randint"
+    )
     qscales = TestTensor(qscales_shape, qscales_stride, qscales_dtype, device)
     out = TestTensor(out_shape, out_stride, out_dtype, device, mode="zeros")
     ans = TestTensor(out_shape, out_stride, out_dtype, device, mode="ones")
 
     # Compute the PyTorch reference result
-    def torch_dequantize():
-        return dequantize(
+    def torch_dequantize_awq():
+        return dequantize_awq(
             qweights.torch_tensor(),
             qzeros.torch_tensor(),
             qscales.torch_tensor(),
@@ -240,14 +242,14 @@ def test(
             group_size,
         )
 
-    ans = torch_dequantize()
+    ans = torch_dequantize_awq()
 
     if sync is not None:
         sync()
 
     descriptor = infiniopOperatorDescriptor_t()
     check_error(
-        LIBINFINIOP.infiniopCreateDequantizeDescriptor(
+        LIBINFINIOP.infiniopCreateDequantizeAWQDescriptor(
             handle,
             ctypes.byref(descriptor),
             out.descriptor,
@@ -264,16 +266,16 @@ def test(
     # Get workspace size and create workspace
     workspace_size = c_uint64(0)
     check_error(
-        LIBINFINIOP.infiniopGetDequantizeWorkspaceSize(
+        LIBINFINIOP.infiniopGetDequantizeAWQWorkspaceSize(
             descriptor, ctypes.byref(workspace_size)
         )
     )
     workspace = TestWorkspace(workspace_size.value, device)
 
     # Execute infiniop gemm operator
-    def lib_dequantize():
+    def lib_dequantize_awq():
         check_error(
-            LIBINFINIOP.infiniopDequantize(
+            LIBINFINIOP.infiniopDequantizeAWQ(
                 descriptor,
                 workspace.data(),
                 workspace_size.value,
@@ -285,7 +287,7 @@ def test(
             )
         )
 
-    lib_dequantize()
+    lib_dequantize_awq()
 
     # Validate results
     atol, rtol = get_tolerance(_TOLERANCE_MAP, dtype)
@@ -298,10 +300,10 @@ def test(
     # Profiling workflow
     if PROFILE:
         # fmt: off
-        profile_operation("PyTorch", lambda: torch_dequantize(), device, NUM_PRERUN, NUM_ITERATIONS)
-        profile_operation("    lib", lambda: lib_dequantize(), device, NUM_PRERUN, NUM_ITERATIONS)
+        profile_operation("PyTorch", lambda: torch_dequantize_awq(), device, NUM_PRERUN, NUM_ITERATIONS)
+        profile_operation("    lib", lambda: lib_dequantize_awq(), device, NUM_PRERUN, NUM_ITERATIONS)
         # fmt: on
-    check_error(LIBINFINIOP.infiniopDestroyDequantizeDescriptor(descriptor))
+    check_error(LIBINFINIOP.infiniopDestroyDequantizeAWQDescriptor(descriptor))
 
 
 # ==============================================================================
