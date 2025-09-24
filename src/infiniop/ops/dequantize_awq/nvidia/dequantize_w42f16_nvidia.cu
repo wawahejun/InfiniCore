@@ -5,7 +5,7 @@
 #include "dequantize_w42f16_kernel.cuh"
 #include "dequantize_w42f16_nvidia.cuh"
 
-#include "../dequantize.h"
+#include "../dequantize_awq.h"
 #include <cuda_fp16.h>
 
 __global__ void __launch_bounds__(64)
@@ -68,7 +68,7 @@ __global__ void __launch_bounds__(64)
     }
 }
 
-namespace op::dequantize::nvidia {
+namespace op::dequantize_awq::nvidia {
 
 struct Descriptor::Opaque {
     std::shared_ptr<device::nvidia::Handle::Internal> internal;
@@ -87,7 +87,7 @@ infiniStatus_t Descriptor::create(
     infiniopTensorDescriptor_t zeros_desc) {
 
     auto handle = reinterpret_cast<device::nvidia::Handle *>(handle_);
-    auto result = DequantizeInfo::create(out_desc, qweight_desc, scales_desc, zeros_desc);
+    auto result = DequantizeAWQInfo::create(out_desc, qweight_desc, scales_desc, zeros_desc);
 
     *desc_ptr = new Descriptor(
         0,
@@ -133,6 +133,6 @@ Descriptor::calculate(
     return INFINI_STATUS_SUCCESS;
 }
 
-} // namespace op::dequantize::nvidia
+} // namespace op::dequantize_awq::nvidia
 
 #endif
