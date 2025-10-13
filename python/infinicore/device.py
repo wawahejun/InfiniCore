@@ -1,4 +1,4 @@
-from . import _infinicore
+from infinicore.lib import _infinicore
 
 
 class device:

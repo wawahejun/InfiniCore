@@ -347,7 +347,31 @@ target("_infinicore")
     add_files("src/infinicore/op/*/*.cc")
     add_files("src/infinicore/pybind11/**.cc")
 
-    set_installdir(os.getenv("INFINI_ROOT") or (os.getenv(is_host("windows") and "HOMEPATH" or "HOME") .. "/.infini"))
+    set_installdir("python/infinicore")
+target_end()
+
+option("editable")
+    set_default(false)
+    set_showmenu(true)
+    set_description("Install the `infinicore` Python package in editable mode")
+option_end()
+
+target("infinicore")
+    set_kind("phony")
+
+    set_default(false)
+
+    add_deps("_infinicore")
+
+    on_install(function (target)
+        local pip_install_args = {}
+
+        if has_config("editable") then
+            table.insert(pip_install_args, "--editable")
+        end
+
+        os.execv("python", table.join({"-m", "pip", "install"}, pip_install_args, {"."}))
+    end)
 target_end()
 
 -- Tests
