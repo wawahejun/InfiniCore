@@ -1,6 +1,7 @@
 # Xmake cache
 .xmake/
 build/
+python/infinicore/lib/*.so
 
 # MacOS Cache
 .DS_Store
