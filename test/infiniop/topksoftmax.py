@@ -28,8 +28,8 @@ from libinfiniop import (
 _TEST_CASES_ = [
     # x_shape, x_stride, topk, norm
     ((1, 10), None, 7, True),
-    ((2, 20), None, 4, True),
-    ((1, 128), None, 10, True),
+    ((8, 20), None, 4, True),
+    ((2, 64), None, 6, True),
 ]
 
 # w (weight) types
