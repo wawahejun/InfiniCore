@@ -26,6 +26,8 @@ def run_tests(args):
         "sub.py",
         "swiglu.py",
         "softplus.py",
+        "ones.py",
+        "zeros.py",
         "sigmoid.py",
         "topkrouter.py",
         "topksoftmax.py",
