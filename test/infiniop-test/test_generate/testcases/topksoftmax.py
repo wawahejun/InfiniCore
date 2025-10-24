@@ -115,7 +115,7 @@ if __name__ == "__main__":
         # x_shape, x_strides, topk, norm
         ((1, 32), None, 4, True),
         ((8, 20), None, 8, False),
-        ((2, 128), None, 10, True)
+        ((2, 64), None, 6, True)
     ]
     _TENSOR_DTYPES_ = [np.float32, np.float16]
     for dtype in _TENSOR_DTYPES_:

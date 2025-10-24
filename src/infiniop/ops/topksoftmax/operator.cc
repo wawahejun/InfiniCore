@@ -8,6 +8,9 @@
 #if defined(ENABLE_NVIDIA_API)
 #include "nvidia/topksoftmax_nvidia.cuh"
 #endif
+#ifdef ENABLE_METAX_API
+#include "metax/topksoftmax_metax.cuh"
+#endif
 
 __C infiniStatus_t infiniopCreateTopksoftmaxDescriptor(infiniopHandle_t handle,
                                                        infiniopTopksoftmaxDescriptor_t *desc_ptr,
@@ -24,6 +27,9 @@ __C infiniStatus_t infiniopCreateTopksoftmaxDescriptor(infiniopHandle_t handle,
 #endif
 #ifdef ENABLE_NVIDIA_API
         CREATE(INFINI_DEVICE_NVIDIA, nvidia);
+#endif
+#ifdef ENABLE_METAX_API
+        CREATE(INFINI_DEVICE_METAX, metax);
 #endif
     }
 
@@ -45,6 +51,9 @@ __C infiniStatus_t infiniopGetTopksoftmaxWorkspaceSize(infiniopTopksoftmaxDescri
 #endif
 #ifdef ENABLE_NVIDIA_API
         GET(INFINI_DEVICE_NVIDIA, nvidia);
+#endif
+#ifdef ENABLE_METAX_API
+        GET(INFINI_DEVICE_METAX, metax);
 #endif
     }
 
@@ -72,6 +81,9 @@ __C infiniStatus_t infiniopTopksoftmax(infiniopTopksoftmaxDescriptor_t desc, voi
 #ifdef ENABLE_NVIDIA_API
         CALCULATE(INFINI_DEVICE_NVIDIA, nvidia);
 #endif
+#ifdef ENABLE_METAX_API
+        CALCULATE(INFINI_DEVICE_METAX, metax);
+#endif
     }
 
 #undef CALCULATE
@@ -92,6 +104,9 @@ __C infiniStatus_t infiniopDestroyTopksoftmaxDescriptor(infiniopTopksoftmaxDescr
 #endif
 #ifdef ENABLE_NVIDIA_API
         DESTROY(INFINI_DEVICE_NVIDIA, nvidia);
+#endif
+#ifdef ENABLE_METAX_API
+        DESTROY(INFINI_DEVICE_METAX, metax);
 #endif
     }
 
