@@ -27,6 +27,7 @@ from infinicore.dtype import (
 from infinicore.ntops import use_ntops
 from infinicore.ops.add import add
 from infinicore.ops.attention import attention
+from infinicore.ops.causal_softmax import causal_softmax
 from infinicore.ops.matmul import matmul
 from infinicore.ops.rearrange import rearrange
 from infinicore.ops.rms_norm import rms_norm
@@ -71,6 +72,7 @@ __all__ = [
     # Operations.
     "add",
     "attention",
+    "causal_softmax",
     "matmul",
     "rearrange",
     "rms_norm",
