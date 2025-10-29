@@ -30,6 +30,7 @@ from infinicore.ops.attention import attention
 from infinicore.ops.matmul import matmul
 from infinicore.ops.rearrange import rearrange
 from infinicore.ops.rms_norm import rms_norm
+from infinicore.ops.silu import silu
 from infinicore.tensor import (
     empty,
     from_blob,
@@ -74,6 +75,7 @@ __all__ = [
     "matmul",
     "rearrange",
     "rms_norm",
+    "silu",
     "empty",
     "from_blob",
     "ones",
