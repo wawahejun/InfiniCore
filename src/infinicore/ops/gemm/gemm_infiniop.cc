@@ -1,10 +1,10 @@
 #include "../../utils.hpp"
 #include "infinicore/common/hash.hpp"
 #include "infinicore/ops/common/cache.hpp"
-#include "infinicore/ops/matmul.hpp"
+#include "infinicore/ops/gemm.hpp"
 #include <infiniop.h>
 
-namespace infinicore::op::matmul_impl::infiniop {
+namespace infinicore::op::gemm_impl::infiniop {
 
 thread_local common::OpCache<size_t, infiniopGemmDescriptor_t> caches(
     100, // capacity
@@ -15,8 +15,8 @@ thread_local common::OpCache<size_t, infiniopGemmDescriptor_t> caches(
         }
     });
 
-void calculate(Tensor c, Tensor a, Tensor b) {
-    size_t seed = hash_combine(c, b, a);
+void calculate(Tensor c, Tensor a, Tensor b, float alpha, float beta) {
+    size_t seed = hash_combine(c, b, a, alpha, beta);
 
     auto device_type = context::getDevice().getType();
     auto device_index = context::getDevice().getIndex();
@@ -41,12 +41,12 @@ void calculate(Tensor c, Tensor a, Tensor b) {
 
     INFINICORE_CHECK_ERROR(infiniopGemm(
         desc, workspace->data(), workspace_size,
-        c->data(), a->data(), b->data(), 1.f, 0.f, context::getStream()));
+        c->data(), a->data(), b->data(), alpha, beta, context::getStream()));
 }
 
 static bool registered = []() {
-    Matmul::dispatcher().registerAll(&calculate, false);
+    Gemm::dispatcher().registerAll(&calculate, false);
     return true;
 }();
 
-} // namespace infinicore::op::matmul_impl::infiniop
+} // namespace infinicore::op::gemm_impl::infiniop
