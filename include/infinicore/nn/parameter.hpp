@@ -5,6 +5,8 @@
 namespace infinicore::nn {
 class Parameter : public Tensor {
 public:
+    Parameter();
+
     Parameter(const Shape &shape,
               const DataType &dtype,
               const Device &device);

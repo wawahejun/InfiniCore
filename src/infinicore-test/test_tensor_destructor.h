@@ -4,13 +4,14 @@
 #include "infinicore/context/context.hpp"
 #include "infinicore/tensor.hpp"
 #include "memory_test.h"
+#include "test_runner.h"
 #include <iostream>
 #include <memory>
 #include <vector>
 
 namespace infinicore::test {
 
-class TensorDestructorTest : public MemoryTestFramework {
+class TensorDestructorTest : public TestFramework {
 public:
     TestResult run() override;
     std::string getName() const override { return "TensorDestructorTest"; }

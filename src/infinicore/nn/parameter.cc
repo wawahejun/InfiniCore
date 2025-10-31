@@ -5,6 +5,10 @@
 #include <cstring>
 
 namespace infinicore::nn {
+Parameter::Parameter()
+    : Tensor(Tensor::empty({}, DataType::F32, Device(Device::Type::CPU, 0), false)) {
+}
+
 Parameter::Parameter(
     const Shape &shape,
     const DataType &dtype,
