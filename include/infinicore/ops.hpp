@@ -7,3 +7,4 @@
 #include "ops/rearrange.hpp"
 #include "ops/rms_norm.hpp"
 #include "ops/silu.hpp"
+#include "ops/swiglu.hpp"
