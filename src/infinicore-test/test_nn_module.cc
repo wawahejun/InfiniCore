@@ -394,7 +394,7 @@ TestResult NNModuleTest::testModuleLinear() {
         try {
             // Test with bias
             spdlog::info("Testing Linear module with bias (8->4 features)");
-            infinicore::nn::Linear m1(8, 4, true, infinicore::Device());
+            infinicore::nn::Linear m1(8, 4, true);
             auto sd1 = m1.state_dict();
             if (sd1.find("weight") == sd1.end()) {
                 spdlog::error("weight missing");
@@ -440,7 +440,7 @@ TestResult NNModuleTest::testModuleLinear() {
 
             // Test without bias
             spdlog::info("Testing Linear module without bias (16->3 features)");
-            infinicore::nn::Linear m2(16, 3, false, infinicore::Device());
+            infinicore::nn::Linear m2(16, 3, false);
             auto sd2 = m2.state_dict();
             if (sd2.find("weight") == sd2.end()) {
                 spdlog::error("weight missing (no-bias)");
@@ -834,7 +834,7 @@ TestResult NNModuleTest::testModuleRMSNorm() {
 
             // Test 1: Basic RMSNorm creation
             spdlog::info("Test 1: Basic RMSNorm creation (hidden_size=768)");
-            infinicore::nn::RMSNorm norm1(768, 1e-6, infinicore::Device());
+            infinicore::nn::RMSNorm norm1(768);
 
             auto state1 = norm1.state_dict();
             if (state1.find("weight") == state1.end()) {
@@ -925,8 +925,8 @@ TestResult NNModuleTest::testModuleRMSNorm() {
 
             // Test 7: Different hidden sizes
             spdlog::info("Test 7: Testing different hidden sizes");
-            infinicore::nn::RMSNorm norm_small(128, 1e-5, infinicore::Device());
-            infinicore::nn::RMSNorm norm_large(4096, 1e-6, infinicore::Device());
+            infinicore::nn::RMSNorm norm_small(128, 1e-5);
+            infinicore::nn::RMSNorm norm_large(4096);
 
             auto input_small = infinicore::Tensor::ones({2, 128}, infinicore::DataType::F32, infinicore::Device());
             auto output_small = norm_small.forward(input_small);
@@ -956,7 +956,130 @@ TestResult NNModuleTest::testModuleRMSNorm() {
     });
 }
 
-// Test 8: Comprehensive Tiny-Llama model test (construction + weight loading + validation)
+// Test 8: Dtype assertion test
+TestResult NNModuleTest::testDtypeAssertion() {
+    return measureTime("DtypeAssertionTest", [this]() {
+        try {
+            spdlog::info("Testing dtype assertions when loading parameters");
+
+            // Test 1: Successful load with matching dtype
+            spdlog::info("Test 1: Successful load with matching dtype (F32)");
+            infinicore::nn::Linear linear1(8, 4, true);
+            auto matching_weight = infinicore::Tensor::ones({4, 8}, infinicore::DataType::F32, infinicore::Device());
+            auto matching_bias = infinicore::Tensor::ones({4}, infinicore::DataType::F32, infinicore::Device());
+
+            std::unordered_map<std::string, infinicore::Tensor> matching_state;
+            matching_state.emplace("weight", matching_weight);
+            matching_state.emplace("bias", matching_bias);
+
+            // This should succeed without throwing
+            linear1.load_state_dict(matching_state);
+            spdlog::debug("✓ Matching dtype load succeeded");
+
+            // Test 2: Failed load with mismatched dtype (load_parameter)
+            spdlog::info("Test 2: Failed load_parameter with mismatched dtype");
+            infinicore::nn::Linear linear2(8, 4, true);
+            auto mismatched_weight = infinicore::Tensor::ones({4, 8}, infinicore::DataType::BF16, infinicore::Device());
+
+            bool exception_thrown = false;
+            try {
+                linear2.load_parameter("weight", mismatched_weight);
+            } catch (const std::runtime_error &e) {
+                exception_thrown = true;
+                std::string error_msg = e.what();
+                if (error_msg.find("dtype mismatch") == std::string::npos) {
+                    spdlog::error("Exception message doesn't contain 'dtype mismatch'");
+                    return false;
+                }
+                spdlog::debug("✓ Mismatched dtype exception caught: {}", error_msg);
+            }
+
+            if (!exception_thrown) {
+                spdlog::error("Expected exception for dtype mismatch in load_parameter");
+                return false;
+            }
+
+            // Test 3: Failed load with mismatched dtype (load_state_dict)
+            spdlog::info("Test 3: Failed load_state_dict with mismatched dtype");
+            infinicore::nn::Embedding embedding1(100, 64);
+            auto mismatched_embed_weight = infinicore::Tensor::ones({100, 64}, infinicore::DataType::BF16, infinicore::Device());
+
+            std::unordered_map<std::string, infinicore::Tensor> mismatched_state;
+            mismatched_state.emplace("weight", mismatched_embed_weight);
+
+            exception_thrown = false;
+            try {
+                embedding1.load_state_dict(mismatched_state);
+            } catch (const std::runtime_error &e) {
+                exception_thrown = true;
+                std::string error_msg = e.what();
+                if (error_msg.find("dtype mismatch") == std::string::npos) {
+                    spdlog::error("Exception message doesn't contain 'dtype mismatch'");
+                    return false;
+                }
+                if (error_msg.find("weight") == std::string::npos) {
+                    spdlog::error("Exception message doesn't contain parameter name 'weight'");
+                    return false;
+                }
+                spdlog::debug("✓ Mismatched dtype exception caught: {}", error_msg);
+            }
+
+            if (!exception_thrown) {
+                spdlog::error("Expected exception for dtype mismatch in load_state_dict");
+                return false;
+            }
+
+            // Test 4: Failed load with mismatched dtype (RMSNorm)
+            spdlog::info("Test 4: Failed load_state_dict with mismatched dtype (RMSNorm)");
+            infinicore::nn::RMSNorm norm1(768);
+            auto mismatched_norm_weight = infinicore::Tensor::ones({768}, infinicore::DataType::BF16, infinicore::Device());
+
+            std::unordered_map<std::string, infinicore::Tensor> mismatched_norm_state;
+            mismatched_norm_state.emplace("weight", mismatched_norm_weight);
+
+            exception_thrown = false;
+            try {
+                norm1.load_state_dict(mismatched_norm_state);
+            } catch (const std::runtime_error &e) {
+                exception_thrown = true;
+                std::string error_msg = e.what();
+                if (error_msg.find("dtype mismatch") == std::string::npos) {
+                    spdlog::error("Exception message doesn't contain 'dtype mismatch'");
+                    return false;
+                }
+                spdlog::debug("✓ Mismatched dtype exception caught for RMSNorm: {}", error_msg);
+            }
+
+            if (!exception_thrown) {
+                spdlog::error("Expected exception for dtype mismatch in RMSNorm load_state_dict");
+                return false;
+            }
+
+            // Test 5: Successful load with different module dtypes
+            spdlog::info("Test 5: Successful load with BF16 dtype (module created with BF16)");
+            infinicore::nn::Linear linear3(8, 4, true, infinicore::DataType::BF16);
+            auto bf16_weight = infinicore::Tensor::ones({4, 8}, infinicore::DataType::BF16, infinicore::Device());
+            auto bf16_bias = infinicore::Tensor::ones({4}, infinicore::DataType::BF16, infinicore::Device());
+
+            std::unordered_map<std::string, infinicore::Tensor> bf16_state;
+            bf16_state.emplace("weight", bf16_weight);
+            bf16_state.emplace("bias", bf16_bias);
+
+            // This should succeed
+            linear3.load_state_dict(bf16_state);
+            spdlog::debug("✓ BF16 dtype load succeeded");
+
+            spdlog::info("All dtype assertion tests passed!");
+            return true;
+
+        } catch (const std::exception &e) {
+            spdlog::error("Exception in testDtypeAssertion: {}", e.what());
+            return false;
+        }
+    });
+}
+
+// Test 9: Comprehensive Tiny-Llama model test (construction + weight loading + validation)
 TestResult NNModuleTest::testTinyLlamaConstruction() {
     return measureTime("TinyLlamaModelTest", [this]() {
         try {
@@ -1007,10 +1130,10 @@ TestResult NNModuleTest::testTinyLlamaConstruction() {
                     INFINICORE_NN_MODULE(infinicore::nn::Linear, o_proj);
 
                     SelfAttn(size_t hidden_size, size_t kv_dim, const infinicore::Device &device) {
-                        INFINICORE_NN_MODULE_INIT(q_proj, hidden_size, hidden_size, false, device);
-                        INFINICORE_NN_MODULE_INIT(k_proj, hidden_size, kv_dim, false, device);
-                        INFINICORE_NN_MODULE_INIT(v_proj, hidden_size, kv_dim, false, device);
-                        INFINICORE_NN_MODULE_INIT(o_proj, hidden_size, hidden_size, false, device);
+                        INFINICORE_NN_MODULE_INIT(q_proj, hidden_size, hidden_size, false, infinicore::DataType::F32, device);
+                        INFINICORE_NN_MODULE_INIT(k_proj, hidden_size, kv_dim, false, infinicore::DataType::F32, device);
+                        INFINICORE_NN_MODULE_INIT(v_proj, hidden_size, kv_dim, false, infinicore::DataType::F32, device);
+                        INFINICORE_NN_MODULE_INIT(o_proj, hidden_size, hidden_size, false, infinicore::DataType::F32, device);
                     }
                 };
 
@@ -1021,9 +1144,9 @@ TestResult NNModuleTest::testTinyLlamaConstruction() {
                     INFINICORE_NN_MODULE(infinicore::nn::Linear, down_proj);
 
                     MLP(size_t hidden_size, size_t intermediate_size, const infinicore::Device &device) {
-                        INFINICORE_NN_MODULE_INIT(gate_proj, hidden_size, intermediate_size, false, device);
-                        INFINICORE_NN_MODULE_INIT(up_proj, hidden_size, intermediate_size, false, device);
-                        INFINICORE_NN_MODULE_INIT(down_proj, intermediate_size, hidden_size, false, device);
+                        INFINICORE_NN_MODULE_INIT(gate_proj, hidden_size, intermediate_size, false, infinicore::DataType::F32, device);
+                        INFINICORE_NN_MODULE_INIT(up_proj, hidden_size, intermediate_size, false, infinicore::DataType::F32, device);
+                        INFINICORE_NN_MODULE_INIT(down_proj, intermediate_size, hidden_size, false, infinicore::DataType::F32, device);
                     }
                 };
 
@@ -1036,9 +1159,9 @@ TestResult NNModuleTest::testTinyLlamaConstruction() {
 
                     Block(const TinyLlamaConfig &cfg, const infinicore::Device &device) {
                         size_t kv_dim = cfg.hidden_size * cfg.num_key_value_heads / cfg.num_attention_heads;
-                        INFINICORE_NN_MODULE_INIT(input_layernorm, cfg.hidden_size, cfg.rms_norm_eps, device);
+                        INFINICORE_NN_MODULE_INIT(input_layernorm, cfg.hidden_size, cfg.rms_norm_eps, infinicore::DataType::F32, device);
                         INFINICORE_NN_MODULE_INIT(self_attn, cfg.hidden_size, kv_dim, device);
-                        INFINICORE_NN_MODULE_INIT(post_attention_layernorm, cfg.hidden_size, cfg.rms_norm_eps, device);
+                        INFINICORE_NN_MODULE_INIT(post_attention_layernorm, cfg.hidden_size, cfg.rms_norm_eps, infinicore::DataType::F32, device);
                         INFINICORE_NN_MODULE_INIT(mlp, cfg.hidden_size, cfg.intermediate_size, device);
                     }
                 };
@@ -1051,7 +1174,7 @@ TestResult NNModuleTest::testTinyLlamaConstruction() {
                 TinyLlamaModel(const TinyLlamaConfig &config, const infinicore::Device &device) {
                     INFINICORE_NN_MODULE_INIT(embed_tokens, config.vocab_size, config.hidden_size, std::nullopt, infinicore::DataType::F32, device);
                     INFINICORE_NN_MODULE_VEC_INIT(layers, config.num_hidden_layers, Block, config, device);
-                    INFINICORE_NN_MODULE_INIT(norm, config.hidden_size, config.rms_norm_eps, device);
+                    INFINICORE_NN_MODULE_INIT(norm, config.hidden_size, config.rms_norm_eps, infinicore::DataType::F32, device);
                 }
             };
 
@@ -1259,6 +1382,7 @@ TestResult NNModuleTest::run() {
     results.push_back(testModuleLinear());          // Linear module comprehensive test
     results.push_back(testModuleEmbedding());       // Embedding module test
     results.push_back(testModuleRMSNorm());         // RMSNorm module test
+    results.push_back(testDtypeAssertion());        // Dtype assertion test
     results.push_back(testTinyLlamaConstruction()); // Comprehensive: TinyLlama model test
 
     // Check if all tests passed

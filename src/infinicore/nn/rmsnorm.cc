@@ -6,21 +6,22 @@
 
 namespace infinicore::nn {
 
-RMSNorm::RMSNorm(size_t normalized_shape, double eps, const Device &device)
+RMSNorm::RMSNorm(size_t normalized_shape, double eps, const DataType &dtype, const Device &device)
     : normalized_shape_(normalized_shape),
-      eps_(eps) {
+      eps_(eps),
+      dtype_(dtype) {
 
     device_ = device;
 
     // Initialize parameter using macro
-    INFINICORE_NN_PARAMETER_INIT(weight, ({normalized_shape}, DataType::F32, device));
+    INFINICORE_NN_PARAMETER_INIT(weight, ({normalized_shape}, dtype_, device));
 
     // Initialize weight to ones (standard practice for RMSNorm)
-    auto ones_tensor = Tensor::ones({normalized_shape}, DataType::F32, device);
+    auto ones_tensor = Tensor::ones({normalized_shape}, dtype_, device);
     weight_->copy_from(ones_tensor);
 
-    spdlog::debug("Created RMSNorm module: normalized_shape={}, eps={}",
-                  normalized_shape, eps);
+    spdlog::debug("Created RMSNorm module: normalized_shape={}, eps={}, dtype={}",
+                  normalized_shape, eps, static_cast<int>(dtype_));
 }
 
 Tensor RMSNorm::forward(const Tensor &x) const {
@@ -37,7 +38,7 @@ Tensor RMSNorm::forward(const Tensor &x) const {
 }
 
 std::string RMSNorm::extra_repr() const {
-    return "RMSNorm(normalized_shape=" + std::to_string(normalized_shape_) + ", eps=" + std::to_string(eps_) + ")";
+    return "RMSNorm(normalized_shape=" + std::to_string(normalized_shape_) + ", eps=" + std::to_string(eps_) + ", dtype=" + std::to_string(static_cast<int>(dtype_)) + ")";
 }
 
 } // namespace infinicore::nn

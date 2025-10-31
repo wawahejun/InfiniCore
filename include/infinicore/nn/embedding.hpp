@@ -75,7 +75,7 @@ public:
 
 protected:
     // Parameters
-    Parameter weight_;
+    INFINICORE_NN_PARAMETER(weight);
 
 private:
     size_t num_embeddings_;   // Vocabulary size

@@ -4,25 +4,26 @@
 
 namespace infinicore::nn {
 
-Linear::Linear(size_t in_features, size_t out_features, bool bias, const Device &device)
+Linear::Linear(size_t in_features, size_t out_features, bool bias, const DataType &dtype, const Device &device)
     : in_features_(in_features),
       out_features_(out_features),
-      has_bias_(bias) {
+      has_bias_(bias),
+      dtype_(dtype) {
 
     device_ = device;
 
     // Initialize parameters using macro
-    INFINICORE_NN_PARAMETER_INIT(weight, ({out_features, in_features}, DataType::F32, device));
+    INFINICORE_NN_PARAMETER_INIT(weight, ({out_features, in_features}, dtype_, device));
 
     // Register bias parameter if requested
     if (bias) {
-        INFINICORE_NN_PARAMETER_INIT(bias, ({out_features}, DataType::F32, device));
+        INFINICORE_NN_PARAMETER_INIT(bias, ({out_features}, dtype_, device));
     } else {
         bias_ = Parameter(); // Default constructed empty parameter
     }
 
-    spdlog::debug("Created Linear module: in_features={}, out_features={}, bias={}",
-                  in_features, out_features, bias);
+    spdlog::debug("Created Linear module: in_features={}, out_features={}, bias={}, dtype={}",
+                  in_features, out_features, bias, static_cast<int>(dtype_));
 }
 
 Tensor Linear::compute_linear(Tensor &input) const {
@@ -41,12 +42,9 @@ Tensor Linear::compute_linear(Tensor &input) const {
         strides.push_back(bias_->stride(0));
         auto bias_view = bias_->as_strided(output->shape(), strides);
 
-        // First set output to bias (broadcasted)
-        infinicore::op::rearrange_(output, bias_view);
-
         // Compute matmul result separately, then add to output
-        auto matmul_result = infinicore::op::matmul(input, weight_t);
-        infinicore::op::add_(output, output, matmul_result);
+        infinicore::op::matmul_(output, input, weight_t);
+        infinicore::op::add_(output, output, bias_view);
     } else {
         // No bias: just compute output = input @ weight_t
         infinicore::op::matmul_(output, input, weight_t);
@@ -69,7 +67,7 @@ Tensor Linear::forward(Tensor &input, Tensor &residual) const {
 }
 
 std::string Linear::extra_repr() const {
-    return "Linear(in_features=" + std::to_string(in_features_) + ", out_features=" + std::to_string(out_features_) + ", bias=" + (has_bias_ ? "true" : "false") + ")";
+    return "Linear(in_features=" + std::to_string(in_features_) + ", out_features=" + std::to_string(out_features_) + ", bias=" + (has_bias_ ? "true" : "false") + ", dtype=" + std::to_string(static_cast<int>(dtype_)) + ")";
 }
 
 } // namespace infinicore::nn

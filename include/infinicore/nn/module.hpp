@@ -125,13 +125,13 @@ private:
 
 // Declare a parameter member variable
 #define INFINICORE_NN_PARAMETER(name) \
-    Parameter name##_
+    infinicore::nn::Parameter name##_
 
 // Initialize a parameter in constructor
 // Usage: INFINICORE_NN_PARAMETER_INIT(name, (shape, dtype, device))
 // Example: INFINICORE_NN_PARAMETER_INIT(weight, ({out_features, in_features}, DataType::F32, device))
 #define INFINICORE_NN_PARAMETER_INIT(name, args) \
-    name##_ = Parameter args; \
+    name##_ = infinicore::nn::Parameter args; \
     this->register_parameter(#name, name##_)
 
 } // namespace infinicore::nn

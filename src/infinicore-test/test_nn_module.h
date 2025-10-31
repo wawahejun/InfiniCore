@@ -21,16 +21,21 @@ namespace infinicore::test {
 // Simple test module that mimics torch.nn.Linear
 class MockLinearModule : public infinicore::nn::Module {
 public:
+    // Declare parameters using macros (torch-like style)
+    INFINICORE_NN_PARAMETER(weight);
+    INFINICORE_NN_PARAMETER(bias);
+
     MockLinearModule(int input_size, int output_size, const infinicore::Device &device)
         : input_size_(input_size), output_size_(output_size), device_(device) {
-
-        // Initialize weight parameter (similar to torch.nn.Linear.weight)
-        register_parameter("weight",
-                           infinicore::nn::Parameter({static_cast<size_t>(output_size), static_cast<size_t>(input_size)}, infinicore::DataType::F32, device));
-
-        // Initialize bias parameter (similar to torch.nn.Linear.bias)
-        register_parameter("bias",
-                           infinicore::nn::Parameter({static_cast<size_t>(output_size)}, infinicore::DataType::F32, device));
+        // Initialize parameters using macros
+        INFINICORE_NN_PARAMETER_INIT(weight,
+                                     ({static_cast<size_t>(output_size), static_cast<size_t>(input_size)},
+                                      infinicore::DataType::F32,
+                                      device));
+        INFINICORE_NN_PARAMETER_INIT(bias,
+                                     ({static_cast<size_t>(output_size)},
+                                      infinicore::DataType::F32,
+                                      device));
     }
 
     // Simple forward pass (conceptual - would need actual matrix operations)
@@ -77,6 +82,7 @@ private:
     TestResult testModuleLinear();          // Comprehensive Linear module test
     TestResult testModuleEmbedding();       // Embedding module test
     TestResult testModuleRMSNorm();         // RMSNorm module test
+    TestResult testDtypeAssertion();        // Test dtype assertions when loading parameters
     TestResult testTinyLlamaConstruction(); // Comprehensive: construction + weight loading + validation
 };
 

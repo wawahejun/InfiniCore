@@ -36,10 +36,12 @@ public:
      *
      * @param normalized_shape Size of the feature dimension to normalize (typically hidden_size)
      * @param eps Small constant for numerical stability (default: 1e-6)
+     * @param dtype Data type for the weight (default: DataType::F32)
      * @param device Device to create the weight on
      */
     RMSNorm(size_t normalized_shape,
             double eps = 1e-6,
+            const DataType &dtype = DataType::F32,
             const Device &device = Device());
 
     /**
@@ -58,6 +60,7 @@ public:
     // Module information
     size_t normalized_shape() const { return normalized_shape_; }
     double eps() const { return eps_; }
+    DataType dtype() const { return dtype_; }
 
     // String representation
     std::string extra_repr() const;
@@ -67,11 +70,12 @@ public:
 
 protected:
     // Parameters
-    Parameter weight_;
+    INFINICORE_NN_PARAMETER(weight);
 
 private:
     size_t normalized_shape_;  // Size of the feature dimension
     double eps_;               // Epsilon for numerical stability
+    DataType dtype_;           // Data type for weight
 };
 
 } // namespace infinicore::nn
