@@ -1,4 +1,6 @@
 #include "memory_test.h"
+#include "test_nn_module.h"
+#include "test_runner.h"
 #include "test_tensor_destructor.h"
 #include <iostream>
 #include <memory>
@@ -13,6 +15,7 @@ struct ParsedArgs {
     bool run_memory_leak = true;
     bool run_performance = true;
     bool run_stress = true;
+    bool run_module = false;
     int num_threads = 4;
     int iterations = 1000;
 };
@@ -23,7 +26,7 @@ void printUsage() {
               << std::endl
               << "Options:" << std::endl
               << "  --<device>        Specify the device type (default: cpu)" << std::endl
-              << "  --test <name>     Run specific test (basic|concurrency|exception|leak|performance|stress|all)" << std::endl
+              << "  --test <name>     Run specific test (basic|concurrency|exception|leak|performance|stress|module|all)" << std::endl
               << "  --threads <num>   Number of threads for concurrency tests (default: 4)" << std::endl
               << "  --iterations <num> Number of iterations for stress tests (default: 1000)" << std::endl
               << "  --help            Show this help message" << std::endl
@@ -46,6 +49,7 @@ void printUsage() {
               << "  leak        - Memory leak detection tests" << std::endl
               << "  performance - Performance and benchmark tests" << std::endl
               << "  stress      - Stress tests with high load" << std::endl
+              << "  module      - Neural network module tests" << std::endl
               << "  all         - Run all tests (default)" << std::endl
               << std::endl;
     exit(EXIT_SUCCESS);
@@ -84,7 +88,7 @@ ParsedArgs parseArgs(int argc, char *argv[]) {
             }
 
             std::string test_name = argv[++i];
-            args.run_basic = args.run_concurrency = args.run_exception_safety = args.run_memory_leak = args.run_performance = args.run_stress = false;
+            args.run_basic = args.run_concurrency = args.run_exception_safety = args.run_memory_leak = args.run_performance = args.run_stress = args.run_module = false;
 
             if (test_name == "basic") {
                 args.run_basic = true;
@@ -98,8 +102,10 @@ ParsedArgs parseArgs(int argc, char *argv[]) {
                 args.run_performance = true;
             } else if (test_name == "stress") {
                 args.run_stress = true;
+            } else if (test_name == "module") {
+                args.run_module = true;
             } else if (test_name == "all") {
-                args.run_basic = args.run_concurrency = args.run_exception_safety = args.run_memory_leak = args.run_performance = args.run_stress = true;
+                args.run_basic = args.run_concurrency = args.run_exception_safety = args.run_memory_leak = args.run_performance = args.run_stress = args.run_module = true;
             } else {
                 std::cerr << "Error: Unknown test name: " << test_name << std::endl;
                 exit(EXIT_FAILURE);
@@ -157,7 +163,7 @@ int main(int argc, char *argv[]) {
 
         spdlog::debug("Creating test runner");
         // Create test runner
-        infinicore::test::MemoryTestRunner runner;
+        infinicore::test::InfiniCoreTestRunner runner;
         spdlog::debug("Test runner created successfully");
 
         // Add tests based on arguments
@@ -169,6 +175,12 @@ int main(int argc, char *argv[]) {
             spdlog::debug("Adding TensorDestructorTest");
             runner.addTest(std::make_unique<infinicore::test::TensorDestructorTest>());
             spdlog::debug("TensorDestructorTest added successfully");
+        }
+
+        if (args.run_module) {
+            spdlog::debug("Adding NNModuleTest");
+            runner.addTest(std::make_unique<infinicore::test::NNModuleTest>());
+            spdlog::debug("NNModuleTest added successfully");
         }
 
         if (args.run_concurrency) {
@@ -196,13 +208,29 @@ int main(int argc, char *argv[]) {
         auto results = runner.runAllTests();
         spdlog::debug("All tests completed");
 
-        // Count results
+        // Count results and collect failed tests
         size_t passed = 0, failed = 0;
+        std::vector<infinicore::test::TestResult> failed_tests;
         for (const auto &result : results) {
             if (result.passed) {
                 passed++;
             } else {
                 failed++;
+                failed_tests.push_back(result);
+            }
+        }
+
+        // Print list of failed tests if any
+        if (!failed_tests.empty()) {
+            std::cout << "\n==============================================\n"
+                      << "❌ FAILED TESTS\n"
+                      << "==============================================" << std::endl;
+            for (const auto &test : failed_tests) {
+                std::cout << "  • " << test.test_name;
+                if (!test.error_message.empty()) {
+                    std::cout << "\n    Error: " << test.error_message;
+                }
+                std::cout << "\n    Duration: " << test.duration.count() << "μs" << std::endl;
             }
         }
 
@@ -217,7 +245,7 @@ int main(int argc, char *argv[]) {
 
         // Exit with appropriate code
         if (failed > 0) {
-            std::cout << "\n❌ Some tests failed. Please review the output above." << std::endl;
+            std::cout << "\n❌ Some tests failed. Please review the failed tests list above." << std::endl;
             return EXIT_FAILURE;
         } else {
             std::cout << "\n✅ All tests passed!" << std::endl;
