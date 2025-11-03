@@ -34,7 +34,7 @@ def profile_operation(desc, func, torch_device, num_prerun, num_iterations):
 
     # Timed execution
     elapsed = timed_op(lambda: func(), num_iterations, torch_device)
-    print(f" {desc} time: {elapsed * 1000 :6f} ms")
+    print(f"    {desc} time: {elapsed * 1000 :6f} ms")
 
 
 def debug(actual, desired, atol=0, rtol=1e-2, equal_nan=False, verbose=True):
@@ -121,7 +121,7 @@ def print_discrepancy(
         print(
             f"  - Min(delta)  : {torch.min(delta):<{col_width[1]}} | Max(delta)  : {torch.max(delta):<{col_width[2]}}"
         )
-        print("-" * total_width + "\n")
+        print("-" * total_width)
 
     return diff_indices
 
@@ -225,7 +225,7 @@ def create_test_comparator(config, dtype, tolerance_map=None, mode_name=""):
 
     def compare_test_results(infini_result, torch_result):
         if config.debug and mode_name:
-            print(f"\n\033[94mDEBUG INFO - {mode_name}:\033[0m")
+            print(f"\033[94mDEBUG INFO - {mode_name}:\033[0m")
         return compare_results(
             infini_result, torch_result, atol=atol, rtol=rtol, debug_mode=config.debug
         )
