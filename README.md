@@ -26,9 +26,17 @@ InfiniCore 是一个跨平台统一编程工具集，为不同芯片平台的功
 
 API 定义以及使用方式详见 [`InfiniCore文档`](https://github.com/InfiniTensor/InfiniCore-Documentation)。
 
+## 项目依赖
+
+- [Xmake](https://xmake.io/)：跨平台自动构建工具，用于编译 InfiniCore 项目。
+- [gcc-11](https://gcc.gnu.org/) 以上或者 [clang-16](https://clang.llvm.org/)：基础编译器，需要支持 C++ 17 标准。
+- [Python>=3.10](https://www.python.org/)
+  - [PyTorch](https://pytorch.org/)：可选，用于对比测试。
+- 各个硬件平台的工具包：请参考各厂商官方文档（如英伟达平台需要安装 CUDA Toolkit）。
+
 ## 配置和使用
 
-### 子模块
+### 一、克隆项目
 
 由于仓库中含有子模块，所以在克隆时请添加 `--recursive` 或 `--recurse-submodules`，如：
 
@@ -42,7 +50,27 @@ git clone --recursive https://github.com/InfiniTensor/InfiniCore.git
 git submodule update --init --recursive
 ```
 
-### 一键安装
+如果你需要在本地开发九齿算子（即需要对九齿算子库进行修改），推荐单独克隆[九齿算子库](https://github.com/InfiniTensor/ntops)，并从本地安装：
+
+```shell
+git clone https://github.com/InfiniTensor/ntops.git
+cd ntops
+pip install -e .
+```
+
+### 二、编译安装
+
+InfiniCore 项目主要包括：
+
+1. 底层 C 库（InfiniOP/InfiniRT/InfiniCCL）：[`一键安装`](#一键安装底层库)|[`手动安装`](#手动安装底层库)；
+2. InfiniCore C++ 库：[`安装指令`](#2-安装-c-库)
+3. InfiniCore Python 包（依赖[九齿算子库](https://github.com/InfiniTensor/ntops)）：[`安装指令`](#3-安装-python-包)
+
+三者需要按照顺序进行编译安装。
+
+#### 1. 安装底层库
+
+##### 一键安装底层库
 
 在 `script/` 目录中提供了 `install.py` 安装脚本。使用方式如下：
 
@@ -69,11 +97,17 @@ python scripts/install.py [XMAKE_CONFIG_FLAGS]
 | `--ninetoothed=[y\|n]`   | 是否编译九齿实现                 | n
 | `--ccl=[y\|n]`           | 是否编译 InfiniCCL 通信库接口实现 | n
 
-### 手动安装
+#####  手动安装底层库
 
 0. 生成九齿算子（可选）
 
-    参见[使用九齿](#使用九齿)章节。
+   - 克隆并安装[九齿算子库](https://github.com/InfiniTensor/ntops)。
+
+   - 在 `InfiniCore` 文件夹下运行以下命令 AOT 编译库中的九齿算子：
+
+     ```shell
+     PYTHONPATH=${PYTHONPATH}:src python scripts/build_ntops.py
+     ```
 
 1. 项目配置
 
@@ -118,27 +152,49 @@ python scripts/install.py [XMAKE_CONFIG_FLAGS]
 
    按输出提示设置 `INFINI_ROOT` 和 `LD_LIBRARY_PATH` 环境变量。
 
-### 运行测试
-
-#### 运行Python算子测试
+#### 2. 安装 C++ 库
 
 ```shell
-python test/infiniop/[operator].py [--cpu | --nvidia | --cambricon | --ascend]
+xmake build _infinicore
+xmake install _infinicore
 ```
 
-#### 一键运行所有Python算子测试
+#### 3. 安装 Python 包
 
 ```shell
+pip install .
+```
+
+或
+
+```shell
+pip install . -e
+```
+
+注：开发时建议加入 `-e` 选项（即 `pip install -e .`），这样对 `python/infinicore` 做的更改将会实时得到反映，同时对 C++ 层所做的修改也只需要运行 `xmake build _infinicore && xmake install _infinicore` 便可以生效。
+
+### 三、运行测试
+
+#### 运行 InfiniCore Python算子接口测试
+
+```bash
+python test/infinicore/run.py --nvidia --verbose --bench
+```
+
+使用 -h 查看更多参数。
+
+#### 运行 InfiniOP 算子测试
+
+```shell
+# 测试单算子
+python test/infiniop/[operator].py [--cpu | --nvidia | --cambricon | --ascend]
+# 测试全部算子
 python scripts/python_test.py [--cpu | --nvidia | --cambricon | --ascend]
 ```
 
-#### 算子测试框架
-
-详见 `test/infiniop-test` 目录
-
 #### 通信库（InfiniCCL）测试
 
-编译（需要先安装InfiniCCL）：
+编译（需要先安装底层库中的 InfiniCCL 库）：
 
 ```shell
 xmake build infiniccl-test
@@ -149,59 +205,6 @@ xmake build infiniccl-test
 ```shell
 infiniccl-test --nvidia
 ```
-
-### `infinicore` Python 包
-
-#### 构建
-
-1. 进行[手动安装](#手动安装)。
-2. 构建与安装内部依赖库 `_infinicore`：
-
-```shell
-xmake build _infinicore
-```
-
-#### 安装
-
-1. 安装 `_infinicore`：
-
-```shell
-xmake install _infinicore
-```
-
-2. 安装 `infinicore`：
-
-```shell
-pip install .
-```
-
-注：开发时建议加入 `-e` 选项（即 `pip install -e .`），这样对 `python/infinicore` 做的更改将会实时得到反映，同时对 C++ 层所做的修改也只需要运行 `xmake build _infinicore && xmake install _infinicore` 便可以生效。
-
-### 使用九齿
-
-[九齿](https://github.com/InfiniTensor/ninetoothed)是一门基于 Triton 但提供更高层抽象的领域特定语言（DSL）。使用九齿可以降低算子的开发门槛，并且提高开发效率。
-
-InfiniCore 目前已经可以接入使用九齿实现的算子，但是这部分实现的编译是默认关闭的。如果选择编译库中的九齿实现，需要使用 `--ninetoothed=y`，并在运行一键安装脚本前完成以下准备工作：
-
-1. 安装九齿与[九齿算子库](https://github.com/InfiniTensor/ntops)：
-
-```shell
-git clone https://github.com/InfiniTensor/ntops.git
-cd ntops
-pip install -e .
-```
-
-注：安装 `ntops` 时，`ninetoothed` 会被当成依赖也一并安装进来。
-
-2. 在 `InfiniCore` 文件夹下运行以下命令 AOT 编译库中的九齿算子：
-
-```shell
-PYTHONPATH=${PYTHONPATH}:src python scripts/build_ntops.py
-```
-
-注：如果对九齿相关文件有修改，需要重新构建 InfiniCore 时，也需要同时运行以上命令进行重新生成。
-
-3. 按照上面的指引进行[一键安装](#一键安装)或者[手动安装](#手动安装)。
 
 ## 如何开源贡献
 
