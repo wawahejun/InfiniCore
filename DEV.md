@@ -6,12 +6,12 @@ Dear 开发者，感谢你参与 InfiniCore 开源项目的开发！本文档将
 
 ### 项目模块体系
 
+- infinicore：统一计算框架。提供 Python 和 C++ 接口，支持多种硬件平台。
+- infinirt：统一底层运行时库，提供 C 语言接口，依赖 infini-utils。
+- infiniop：统一底层算子库，提供 C 语言接口，依赖 infinirt。除了 C++ 算子实现之外，也包括使用九齿（triton）的算子实现，这部分算子需要在编译之前使用脚本生成源文件。安装后可以运行位于 `test/infiniop` 中的单测脚本进行测试。
+- infiniccl：统一通信库，提供 C 语言接口，依赖 infinirt。
 - infini-utils：全模块通用工具代码。
-- infinirt：运行时库，依赖 infini-utils。
-- infiniop：算子库，依赖 infinirt。除了 C++ 算子实现之外，也包括使用九齿（triton）的算子实现，这部分算子需要在编译之前使用脚本生成源文件。安装后可以运行位于 `test/infiniop` 中的单测脚本进行测试。
-- infiniccl：通信库，依赖 infinirt。
 - utils-test：工具库测试代码，依赖 infini-utils。
-- infiniop-test：算子库测试框架代码。与单测不同，读取gguf测例文件进行测试（详见[`测例文档`](test/infiniop-test/README.md)）。使用前需要安装好 infiniop。
 - infiniccl-test：通信库测试代码，使用前需要安装好 infiniccl。
 
 ### 文件目录结构
@@ -21,10 +21,18 @@ Dear 开发者，感谢你参与 InfiniCore 开源项目的开发！本文档将
 ├── xmake/*.lua  # 各平台 xmake 编译配置， 包含各平台特有的编译方式
 │    
 ├── include/  # 对外暴露的头文件目录，安装时会被复制到安装目录
-│   ├── infiniop/*.h  # InfiniOP算子库子头文件
-│   ├── *.h  # 模块核心头文件
+│   ├── infinicore/*.hpp  # InfiniCore计算库头文件（C++）
+│   ├── infiniop/*.h  # InfiniOP算子库子头文件（C）
+│   ├── *.h/.hpp  # 模块核心头文件
 │ 
 ├── src/  # 各模块源代码目录，包含源代码文件以及不对外暴露的头文件
+│   ├── infinicore/ # InfiniCore源代码目录
+│   │   ├── context/  # 张量运行时/硬件上下文管理源代码目录
+│   │   ├── nn/  # 机器学习模块源代码目录
+│   │   ├── ops/  # 张量算子源代码目录
+│   │   ├── pybind/  # pybind 接口源代码目录
+│   │   ├── tensor/  # 张量库源代码目录
+│   │ 
 │   ├── infiniop/ # InfiniOP算子库源代码目录
 │   │   ├── devices/  # 每个设备平台各自的通用代码目录
 │   │   ├── ops/ # 算子实现代码目录
@@ -35,15 +43,14 @@ Dear 开发者，感谢你参与 InfiniCore 开源项目的开发！本文档将
 │   │   ├── elementwise/  # 逐元素类算子通用代码目录
 │   │   ├── *.h  # 核心结构体定义
 │   │
-│   ├── infiniop-test/  # InfiniOP算子库测试框架
 │   ├── infinirt/ # InfiniRT运行时库源代码目录
 │   ├── infiniccl/ # InfiniCCL集合通信库源代码目录
 │  
 ├── test/ # 测试源代码目录
+│   ├── infinicore/ # InfiniCore测试目录
+│   │       ├── ops/*.py     # 算子单测脚本（依赖各平台PyTorch）
 │   ├── infiniop/ # InfiniOP算子库单元测试目录
 │   │       ├── *.py     # 单测脚本（依赖各平台PyTorch）
-│   ├── infiniop-test/
-│   │       ├── test_generate/ # 算子库测试框架测例生成脚本
 │  
 ├── scripts/ # 脚本目录
 │   ├── install.py # 安装编译脚本
@@ -64,13 +71,7 @@ Dear 开发者，感谢你参与 InfiniCore 开源项目的开发！本文档将
 
 ### 如何开发一个新算子
 
-1. 根据算子定义设计算子接口，在 [`InfiniCore文档`](https://github.com/InfiniTensor/InfiniCore-Documentation) 中添加算子文档。提交文档 PR 。
-2. 在 `include/infiniop/` 中添加算子头文件，并 include 到 `include/infiniop.h` 中。
-3. 在 `src/infiniop/ops/` 中添加算子实现目录，并在目录中创建 `operator.cc` 文件实现头文件中的接口。
-4. 在 `src/infiniop/ops/[op]/[device]/` 中添加平台算子实现。注意复用平台公共代码（比如逐元素计算和规约计算），开发过程中把未来可复用的代码写在相应公用代码目录里。比如 cuda kernel 可以多个平台公用，可以考虑在头文件中实现，并在多个源文件中使用。
-5. 算子实现可以成功编译安装后，在 `test/infiniop/` 中添加单测脚本，与 PyTorch 实现进行正确性和性能比较。测例应覆盖算子常用类型和形状。测试成功之后可以将测例添加至 `scripts/python_test.py` 一键测试脚本中（这样 Github 自动测试也会包含该算子）。
-6. 在 `test/infiniop-test/` 算子测试框架中添加该算子的测例脚本。脚本应该包含构建该算子 gguf 测例的类，并在 main 函数中添加几个随机测例。验证随机 gguf 测例可以通过测试框架的测试程序。
-7. 按照流程提交代码 PR 。
+- 如果你想通过 C++ 以及硬件原生语言开发一个新的算子，请阅读 [infinicore::ops 开发指南](/src/infinicore/ops/README.md)
 
 ### C++ 代码命名书写规范
 
@@ -137,6 +138,8 @@ Dear 开发者，感谢你参与 InfiniCore 开源项目的开发！本文档将
     ```c++
     int getMaxValue() const;
     ```
+
+    InfiniCore 中和 torch 对齐的接口，使用 `snake_case`。
 
 4. const/volatile修饰符写在类型前面
 
