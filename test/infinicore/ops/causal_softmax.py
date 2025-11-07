@@ -132,7 +132,9 @@ class OpTest(BaseOperatorTest):
         return self.torch_causal_softmax(*args, **kwargs)
 
     def infinicore_operator(self, *args, **kwargs):
-        return infinicore.causal_softmax(*args, **kwargs)
+        import infinicore.nn.functional as F
+
+        return F.causal_softmax(*args, **kwargs)
 
 
 def main():
