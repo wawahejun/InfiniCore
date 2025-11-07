@@ -4,6 +4,86 @@ import infinicore
 from .datatypes import to_infinicore_dtype, to_torch_dtype
 
 
+def get_operator_help_info():
+    """
+    Get help information for operator testing framework
+
+    Returns:
+        str: Comprehensive help information about the testing framework
+    """
+    return """
+InfiniCore Operator Testing Framework
+
+This framework provides comprehensive testing for InfiniCore operators across
+multiple hardware platforms with the following features:
+
+Key Features:
+-------------
+1. Multi-platform Support: CPU, NVIDIA, Cambricon, Ascend, Iluvatar, Metax, 
+   Moore, Kunlun, and Hygon devices
+2. Flexible Testing: Out-of-place and in-place operations
+3. Performance Benchmarking: Accurate timing with warm-up runs
+4. Debug Capabilities: Detailed tensor comparison and discrepancy analysis
+5. Tolerance Control: Configurable absolute and relative tolerances per data type
+
+Usage Patterns:
+--------------
+Basic testing:
+  python test_operator.py --cpu --nvidia
+
+With benchmarking:
+  python test_operator.py --nvidia --bench --num_iterations 1000
+
+Debug mode:
+  python test_operator.py --cpu --debug
+
+Multiple devices:
+  python test_operator.py --cpu --nvidia
+
+Data Type Support:
+-----------------
+- Floating point: float16, bfloat16, float32
+- Integer: int8, int16, int32, int64, uint8
+- Boolean: bool
+
+Tensor Initialization Modes:
+---------------------------
+- RANDOM: Random values using torch.rand
+- ZEROS: All zeros using torch.zeros  
+- ONES: All ones using torch.ones
+- RANDINT: Random integers using torch.randint
+- MANUAL: Use pre-existing tensor with shape/strides validation
+- BINARY: Use pre-existing tensor with shape validation only
+- FROM_FILE: Load tensor data from file
+
+For detailed examples and advanced usage, refer to the individual operator
+test files and the framework documentation.
+"""
+
+
+def print_operator_testing_tips():
+    """Print useful tips for operator testing"""
+    tips = """
+Operator Testing Tips:
+---------------------
+1. Start with CPU tests for basic functionality validation
+2. Use --debug flag to identify precision issues in early development
+3. Benchmark with sufficient iterations (--num_iterations) for stable results
+4. Set appropriate tolerances for different data types (float16 needs higher tolerance)
+5. Test both contiguous and non-contiguous tensor layouts
+6. Validate in-place operations separately from out-of-place operations
+7. Check edge cases: empty tensors, broadcasting, different tensor shapes
+
+Common Tolerance Settings:
+-------------------------
+- float32: atol=1e-5, rtol=1e-3
+- float16: atol=1e-3, rtol=1e-2  
+- bfloat16: atol=1e-2, rtol=1e-1
+- Integer types: exact equality (atol=0, rtol=0)
+"""
+    print(tips)
+
+
 def synchronize_device(torch_device):
     """Device synchronization"""
     if torch_device == "cuda":
