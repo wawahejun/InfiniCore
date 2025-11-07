@@ -146,7 +146,9 @@ class OpTest(BaseOperatorTest):
 
     def infinicore_operator(self, a, b, out=None, **kwargs):
         """InfiniCore SwiGLU implementation"""
-        return infinicore.swiglu(a, b, out=out)
+        import infinicore.nn.functional as F
+        
+        return F.swiglu(a, b, out=out)
 
 
 def main():

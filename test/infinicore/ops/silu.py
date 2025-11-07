@@ -130,7 +130,9 @@ class OpTest(BaseOperatorTest):
 
     def infinicore_operator(self, input, out=None, **kwargs):
         """InfiniCore SiLU implementation"""
-        return infinicore.silu(input, out=out)
+        import infinicore.nn.functional as F
+        
+        return F.silu(input, out=out)
 
 
 def main():
