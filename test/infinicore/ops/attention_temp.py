@@ -11,18 +11,17 @@ import torch
 import infinicore
 from framework.base import BaseOperatorTest, TensorSpec, TestCase
 from framework.runner import GenericTestRunner
+from framework.utils import is_broadcast
 
 # ==============================================================================
 # Operator-specific configuration
 # ==============================================================================
 
-# Test cases format: (operation_mode, n_q_head, n_kv_head, seq_len, head_dim, pos,
-#                    k_cache_buf_len, v_cache_buf_len, q_strides, k_strides, v_strides,
-#                    k_cache_strides, v_cache_strides)
+# Test cases format: (n_q_head, n_kv_head, seq_len, head_dim, pos, k_cache_buf_len, v_cache_buf_len,
+#                    q_strides, k_strides, v_strides, k_cache_strides, v_cache_strides)
 _TEST_CASES_DATA = [
     # Prefill stage
     (
-        TestCase.OUT_OF_PLACE,
         32,
         4,
         5,
@@ -38,7 +37,6 @@ _TEST_CASES_DATA = [
     ),
     # Decode stage
     (
-        TestCase.OUT_OF_PLACE,
         32,
         4,
         1,
@@ -53,10 +51,9 @@ _TEST_CASES_DATA = [
         [64, 11264, 1],
     ),
     # Small test case
-    (TestCase.OUT_OF_PLACE, 8, 4, 2, 16, 1, 8, 8, None, None, None, None, None),
+    (8, 4, 2, 16, 1, 8, 8, None, None, None, None, None),
     # Another prefill case
     (
-        TestCase.OUT_OF_PLACE,
         28,
         28,
         15,
@@ -137,124 +134,114 @@ def torch_attention(q, k, v, k_cache, v_cache, pos):
     return attn_output
 
 
-def parse_test_cases(data):
+def parse_test_cases():
     """
     Parse attention test case data according to format:
-    (operation_mode, n_q_head, n_kv_head, seq_len, head_dim, pos,
-     k_cache_buf_len, v_cache_buf_len, q_strides, k_strides, v_strides,
-     k_cache_strides, v_cache_strides)
+    (n_q_head, n_kv_head, seq_len, head_dim, pos, k_cache_buf_len, v_cache_buf_len,
+     q_strides, k_strides, v_strides, k_cache_strides, v_cache_strides)
     """
-    operation_mode = data[0]
-    n_q_head, n_kv_head, seq_len, head_dim, pos = (
-        data[1],
-        data[2],
-        data[3],
-        data[4],
-        data[5],
-    )
-    k_cache_buf_len, v_cache_buf_len = data[6], data[7]
-    q_strides = data[8] if len(data) > 8 else None
-    k_strides = data[9] if len(data) > 9 else None
-    v_strides = data[10] if len(data) > 10 else None
-    k_cache_strides = data[11] if len(data) > 11 else None
-    v_cache_strides = data[12] if len(data) > 12 else None
+    test_cases = []
 
-    # Create input specifications
-    inputs = []
-
-    # Query tensor: (n_q_head, seq_len, head_dim)
-    if q_strides is not None:
-        inputs.append(
-            TensorSpec.from_strided_tensor((n_q_head, seq_len, head_dim), q_strides)
+    for data in _TEST_CASES_DATA:
+        n_q_head, n_kv_head, seq_len, head_dim, pos = (
+            data[0],
+            data[1],
+            data[2],
+            data[3],
+            data[4],
         )
-    else:
-        inputs.append(TensorSpec.from_tensor((n_q_head, seq_len, head_dim)))
+        k_cache_buf_len, v_cache_buf_len = data[5], data[6]
+        q_strides = data[7] if len(data) > 7 else None
+        k_strides = data[8] if len(data) > 8 else None
+        v_strides = data[9] if len(data) > 9 else None
+        k_cache_strides = data[10] if len(data) > 10 else None
+        v_cache_strides = data[11] if len(data) > 11 else None
 
-    # Key tensor: (n_kv_head, seq_len, head_dim)
-    if k_strides is not None:
-        inputs.append(
-            TensorSpec.from_strided_tensor((n_kv_head, seq_len, head_dim), k_strides)
-        )
-    else:
-        inputs.append(TensorSpec.from_tensor((n_kv_head, seq_len, head_dim)))
+        # Check if output tensor supports in-place operations
+        # For attention, output shape is (seq_len, n_q_head, head_dim)
+        output_shape = (seq_len, n_q_head, head_dim)
+        output_supports_inplace = True  # Output is always contiguous for attention
 
-    # Value tensor: (n_kv_head, seq_len, head_dim)
-    if v_strides is not None:
-        inputs.append(
-            TensorSpec.from_strided_tensor((n_kv_head, seq_len, head_dim), v_strides)
-        )
-    else:
-        inputs.append(TensorSpec.from_tensor((n_kv_head, seq_len, head_dim)))
+        # Generate test cases for all data types
+        for dtype in [infinicore.float16, infinicore.bfloat16, infinicore.float32]:
+            tolerance = {
+                infinicore.float16: {"atol": 1e-4, "rtol": 1e-2},
+                infinicore.float32: {"atol": 1e-5, "rtol": 1e-3},
+                infinicore.bfloat16: {"atol": 1e-3, "rtol": 5e-2},
+            }.get(dtype, {"atol": 1e-5, "rtol": 1e-4})
 
-    # Key cache: (n_kv_head, k_cache_buf_len, head_dim)
-    if k_cache_strides is not None:
-        inputs.append(
-            TensorSpec.from_strided_tensor(
-                (n_kv_head, k_cache_buf_len, head_dim), k_cache_strides
+            # Create typed tensor specs
+            q_spec = TensorSpec.from_tensor(
+                (n_q_head, seq_len, head_dim), q_strides, dtype
             )
-        )
-    else:
-        inputs.append(TensorSpec.from_tensor((n_kv_head, k_cache_buf_len, head_dim)))
-
-    # Value cache: (n_kv_head, v_cache_buf_len, head_dim)
-    if v_cache_strides is not None:
-        inputs.append(
-            TensorSpec.from_strided_tensor(
-                (n_kv_head, v_cache_buf_len, head_dim), v_cache_strides
+            k_spec = TensorSpec.from_tensor(
+                (n_kv_head, seq_len, head_dim), k_strides, dtype
             )
-        )
-    else:
-        inputs.append(TensorSpec.from_tensor((n_kv_head, v_cache_buf_len, head_dim)))
+            v_spec = TensorSpec.from_tensor(
+                (n_kv_head, seq_len, head_dim), v_strides, dtype
+            )
+            k_cache_spec = TensorSpec.from_tensor(
+                (n_kv_head, k_cache_buf_len, head_dim), k_cache_strides, dtype
+            )
+            v_cache_spec = TensorSpec.from_tensor(
+                (n_kv_head, v_cache_buf_len, head_dim), v_cache_strides, dtype
+            )
+            pos_spec = TensorSpec.from_scalar(pos)
+            output_spec = TensorSpec.from_tensor(
+                output_shape, None, dtype
+            )  # Output is always contiguous
 
-    # Position (scalar)
-    inputs.append(TensorSpec.from_scalar(pos))
+            # Inputs list
+            inputs = [q_spec, k_spec, v_spec, k_cache_spec, v_cache_spec, pos_spec]
 
-    # Output tensor: (seq_len, n_q_head, head_dim)
-    output_shape = (seq_len, n_q_head, head_dim)
-    output = TensorSpec.from_tensor(output_shape)
+            # Test Case 1: Out-of-place (return value)
+            test_cases.append(
+                TestCase(
+                    inputs=inputs,
+                    kwargs={},
+                    output_spec=None,
+                    comparison_target=None,
+                    tolerance=tolerance,
+                    description=f"Attention - OUT_OF_PLACE",
+                )
+            )
 
-    return TestCase(operation_mode, inputs, output)
+            # Test Case 2: In-place with explicit output tensor (attention(q, k, v, k_cache, v_cache, pos, out=output))
+            if output_supports_inplace:
+                test_cases.append(
+                    TestCase(
+                        inputs=inputs,
+                        kwargs=None,
+                        output_spec=output_spec,  # Specify the output tensor spec
+                        comparison_target="out",
+                        tolerance=tolerance,
+                        description=f"Attention - INPLACE(out)",
+                    )
+                )
 
-
-# Parse test cases
-_TEST_CASES = [parse_test_cases(data) for data in _TEST_CASES_DATA]
-
-# Data types
-_TENSOR_DTYPES = [infinicore.float16, infinicore.bfloat16, infinicore.float32]
-
-# Tolerance
-_TOLERANCE_MAP = {
-    infinicore.float16: {"atol": 1e-4, "rtol": 1e-2},
-    infinicore.float32: {"atol": 1e-5, "rtol": 1e-3},
-    infinicore.bfloat16: {"atol": 1e-3, "rtol": 5e-2},
-}
+    return test_cases
 
 
 class OpTest(BaseOperatorTest):
-    """Attention test with simplified test case parsing"""
+    """Attention operator test with simplified implementation"""
 
     def __init__(self):
         super().__init__("Attention")
 
     def get_test_cases(self):
-        return _TEST_CASES
-
-    def get_tensor_dtypes(self):
-        return _TENSOR_DTYPES
-
-    def get_tolerance_map(self):
-        return _TOLERANCE_MAP
+        return parse_test_cases()
 
     def torch_operator(self, q, k, v, k_cache, v_cache, pos, out=None, **kwargs):
+        """PyTorch attention implementation"""
         result = torch_attention(q, k, v, k_cache, v_cache, pos)
 
         if out is not None:
-            out.set_(result)
+            out.copy_(result)
             return out
-        else:
-            return result
+        return result
 
     def infinicore_operator(self, q, k, v, k_cache, v_cache, pos, out=None, **kwargs):
+        """InfiniCore attention implementation"""
         return infinicore.attention(q, k, v, k_cache, v_cache, pos, out=out)
 
 

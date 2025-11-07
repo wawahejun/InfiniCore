@@ -7,3 +7,5 @@ def rearrange(input, other, *, out=None):
         return Tensor(_infinicore.rearrange(input._underlying))
 
     _infinicore.rearrange_(out._underlying, input._underlying)
+
+    return out

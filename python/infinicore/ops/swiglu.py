@@ -7,3 +7,5 @@ def swiglu(input, other, *, out=None):
         return Tensor(_infinicore.swiglu(input._underlying, other._underlying))
 
     _infinicore.swiglu_(out._underlying, input._underlying, other._underlying)
+
+    return out
