@@ -20,13 +20,10 @@ class GenericTestRunner:
     def run(self):
         """Execute the complete test suite"""
         config = TestConfig(
-            tensor_dtypes=self.operator_test.tensor_dtypes,
-            tolerance_map=self.operator_test.tolerance_map,
             debug=self.args.debug,
             bench=self.args.bench,
             num_prerun=self.args.num_prerun,
             num_iterations=self.args.num_iterations,
-            dtype_combinations=self.operator_test.dtype_combinations,
         )
 
         runner = TestRunner(self.operator_test.test_cases, config)

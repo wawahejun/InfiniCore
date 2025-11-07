@@ -24,3 +24,5 @@ def attention(q, k, v, k_cache, v_cache, pos, *, out=None):
         v_cache._underlying,
         pos,
     )
+
+    return out

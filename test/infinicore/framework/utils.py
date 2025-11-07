@@ -37,52 +37,25 @@ def profile_operation(desc, func, torch_device, num_prerun, num_iterations):
     print(f"    {desc} time: {elapsed * 1000 :6f} ms")
 
 
-def is_integer_dtype(dtype):
-    """Check if dtype is integer type"""
-    return dtype in [
-        infinicore.int8,
-        infinicore.int16,
-        infinicore.int32,
-        infinicore.int64,
-        infinicore.uint8,
-    ]
-
-
-def is_float_dtype(dtype):
-    """Check if dtype is floating point type"""
-    return dtype in [infinicore.float16, infinicore.float32, infinicore.bfloat16]
-
-
-def debug(
-    actual, desired, atol=0, rtol=1e-2, equal_nan=False, verbose=True, dtype=None
-):
+def debug(actual, desired, atol=0, rtol=1e-2, equal_nan=False, verbose=True):
     """
     Debug function to compare two tensors and print differences
     """
-    # Convert to float32 for bfloat16 comparison
     if actual.dtype == torch.bfloat16 or desired.dtype == torch.bfloat16:
         actual = actual.to(torch.float32)
         desired = desired.to(torch.float32)
 
-    print_discrepancy(actual, desired, atol, rtol, equal_nan, verbose, dtype)
+    print_discrepancy(actual, desired, atol, rtol, equal_nan, verbose)
 
-    # Use appropriate comparison based on dtype
-    if dtype and is_integer_dtype(dtype):
-        # For integer types, require exact equality
-        import numpy as np
+    import numpy as np
 
-        np.testing.assert_array_equal(actual.cpu(), desired.cpu())
-    else:
-        # For float types, use allclose
-        import numpy as np
-
-        np.testing.assert_allclose(
-            actual.cpu(), desired.cpu(), rtol, atol, equal_nan, verbose=True
-        )
+    np.testing.assert_allclose(
+        actual.cpu(), desired.cpu(), rtol, atol, equal_nan, verbose=True
+    )
 
 
 def print_discrepancy(
-    actual, expected, atol=0, rtol=1e-3, equal_nan=True, verbose=True, dtype=None
+    actual, expected, atol=0, rtol=1e-3, equal_nan=True, verbose=True
 ):
     """Print detailed tensor differences"""
     if actual.shape != expected.shape:
@@ -96,21 +69,13 @@ def print_discrepancy(
     actual_isnan = torch.isnan(actual)
     expected_isnan = torch.isnan(expected)
 
-    # Calculate difference mask based on dtype
-    if dtype and is_integer_dtype(dtype):
-        # For integer types, exact equality required
-        diff_mask = actual != expected
-    else:
-        # For float types, use tolerance-based comparison
-        nan_mismatch = (
-            actual_isnan ^ expected_isnan
-            if equal_nan
-            else actual_isnan | expected_isnan
-        )
-        diff_mask = nan_mismatch | (
-            torch.abs(actual - expected) > (atol + rtol * torch.abs(expected))
-        )
-
+    # Calculate difference mask
+    nan_mismatch = (
+        actual_isnan ^ expected_isnan if equal_nan else actual_isnan | expected_isnan
+    )
+    diff_mask = nan_mismatch | (
+        torch.abs(actual - expected) > (atol + rtol * torch.abs(expected))
+    )
     diff_indices = torch.nonzero(diff_mask, as_tuple=False)
     delta = actual - expected
 
@@ -142,9 +107,8 @@ def print_discrepancy(
 
         print(f"  - Actual dtype: {actual.dtype}")
         print(f"  - Desired dtype: {expected.dtype}")
-        if not (dtype and is_integer_dtype(dtype)):
-            print(f"  - Atol: {atol}")
-            print(f"  - Rtol: {rtol}")
+        print(f"  - Atol: {atol}")
+        print(f"  - Rtol: {rtol}")
         print(
             f"  - Mismatched elements: {len(diff_indices)} / {actual.numel()} ({len(diff_indices) / actual.numel() * 100}%)"
         )
@@ -166,10 +130,6 @@ def get_tolerance(tolerance_map, tensor_dtype, default_atol=0, default_rtol=1e-3
     """
     Get tolerance settings based on data type
     """
-    # For integer types, return zero tolerance (exact match required)
-    if is_integer_dtype(tensor_dtype):
-        return 0, 0
-
     tolerance = tolerance_map.get(
         tensor_dtype, {"atol": default_atol, "rtol": default_rtol}
     )
@@ -202,6 +162,8 @@ def convert_infinicore_to_torch(infini_result, torch_reference):
     Args:
         infini_result: infinicore tensor result
         torch_reference: PyTorch tensor reference (for shape and device)
+        dtype: infinicore data type
+        device_str: torch device string
 
     Returns:
         torch.Tensor: PyTorch tensor with infinicore data
@@ -217,70 +179,103 @@ def convert_infinicore_to_torch(infini_result, torch_reference):
 
 
 def compare_results(
-    infini_result, torch_result, atol=1e-5, rtol=1e-5, debug_mode=False, dtype=None
+    infini_result, torch_result, atol=1e-5, rtol=1e-5, debug_mode=False
 ):
     """
     Generic function to compare infinicore result with PyTorch reference result
+    Supports both floating-point (with tolerance) and integer (exact) comparison
 
     Args:
         infini_result: infinicore tensor result
         torch_result: PyTorch tensor reference result
-        atol: absolute tolerance
-        rtol: relative tolerance
+        atol: absolute tolerance (for floating-point only)
+        rtol: relative tolerance (for floating-point only)
         debug_mode: whether to enable debug output
-        dtype: infinicore data type for comparison logic
 
     Returns:
-        bool: True if results match within tolerance
+        bool: True if results match within tolerance (FP) or exactly (integer)
     """
     # Convert infinicore result to PyTorch tensor for comparison
     torch_result_from_infini = convert_infinicore_to_torch(infini_result, torch_result)
 
-    # Choose comparison method based on dtype
-    if dtype and is_integer_dtype(dtype):
-        # For integer types, require exact equality
-        result = torch.equal(torch_result_from_infini, torch_result)
-    else:
-        # For float types, use tolerance-based comparison
-        result = torch.allclose(
-            torch_result_from_infini, torch_result, atol=atol, rtol=rtol
-        )
+    # Handle scalar integer comparison
+    if isinstance(torch_result_from_infini, (int, float)) and isinstance(
+        torch_result, (int, float)
+    ):
+        if isinstance(torch_result_from_infini, int) and isinstance(torch_result, int):
+            # Exact integer scalar comparison
+            result_equal = torch_result_from_infini == torch_result
+            if debug_mode and not result_equal:
+                print(
+                    f"Integer scalar mismatch: {torch_result_from_infini} != {torch_result}"
+                )
+            return result_equal
+        else:
+            # Floating-point scalar comparison with tolerance
+            return abs(torch_result_from_infini - torch_result) <= atol + rtol * abs(
+                torch_result
+            )
 
     # Debug mode: detailed comparison
     if debug_mode:
-        debug(torch_result_from_infini, torch_result, atol=atol, rtol=rtol, dtype=dtype)
+        debug(torch_result_from_infini, torch_result, atol=atol, rtol=rtol)
 
-    return result
+    # Choose comparison method based on data type
+    if is_integer_dtype(torch_result_from_infini.dtype) or is_integer_dtype(
+        torch_result.dtype
+    ):
+        # Exact equality for integer types
+        result_equal = torch.equal(torch_result_from_infini, torch_result)
+        if debug_mode and not result_equal:
+            print("Integer tensor comparison failed - requiring exact equality")
+        return result_equal
+    else:
+        # Tolerance-based comparison for floating-point types
+        return torch.allclose(
+            torch_result_from_infini, torch_result, atol=atol, rtol=rtol
+        )
 
 
-def create_test_comparator(config, dtype, tolerance_map=None, mode_name=""):
+def create_test_comparator(config, atol, rtol, mode_name=""):
     """
-    Create a test-specific comparison function that handles test configuration
+    Create a test-specific comparison function
 
     Args:
         config: test configuration
-        dtype: infinicore data type
-        tolerance_map: optional tolerance map (defaults to config's tolerance_map)
+        atol: absolute tolerance (for floating-point only)
+        rtol: relative tolerance (for floating-point only)
         mode_name: operation mode name for debug output
 
     Returns:
         callable: function that takes (infini_result, torch_result) and returns bool
     """
-    if tolerance_map is None:
-        tolerance_map = config.tolerance_map
-
-    atol, rtol = get_tolerance(tolerance_map, dtype)
 
     def compare_test_results(infini_result, torch_result):
         if config.debug and mode_name:
             print(f"\033[94mDEBUG INFO - {mode_name}:\033[0m")
+
+        # For integer types, override tolerance to require exact equality
+        actual_atol = atol
+        actual_rtol = rtol
+
+        # Check if we're dealing with integer types
+        try:
+            # Try to get dtype from infinicore tensor
+            if hasattr(infini_result, "dtype"):
+                infini_dtype = infini_result.dtype
+                torch_dtype = to_torch_dtype(infini_dtype)
+                if is_integer_dtype(torch_dtype):
+                    actual_atol = 0
+                    actual_rtol = 0
+        except:
+            pass
+
         return compare_results(
             infini_result,
             torch_result,
-            atol=atol,
-            rtol=rtol,
+            atol=actual_atol,
+            rtol=actual_rtol,
             debug_mode=config.debug,
-            dtype=dtype,
         )
 
     return compare_test_results
@@ -330,3 +325,30 @@ def rearrange_tensor(tensor, new_strides):
     new_tensor.set_(new_tensor.untyped_storage(), offset, shape, tuple(new_strides))
 
     return new_tensor
+
+
+def is_broadcast(strides):
+    """
+    Check if strides indicate a broadcasted tensor
+
+    Args:
+        strides: Tensor strides or None
+
+    Returns:
+        bool: True if the tensor is broadcasted (has zero strides)
+    """
+    if strides is None:
+        return False
+    return any(s == 0 for s in strides)
+
+
+def is_integer_dtype(dtype):
+    """Check if dtype is integer type"""
+    return dtype in [
+        torch.int8,
+        torch.int16,
+        torch.int32,
+        torch.int64,
+        torch.uint8,
+        torch.bool,
+    ]

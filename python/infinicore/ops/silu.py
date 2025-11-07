@@ -7,3 +7,5 @@ def silu(input, *, out=None):
         return Tensor(_infinicore.silu(input._underlying))
 
     _infinicore.silu_(out._underlying, input._underlying)
+
+    return out

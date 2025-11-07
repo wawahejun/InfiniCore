@@ -7,3 +7,5 @@ def causal_softmax(input, *, out=None):
         return Tensor(_infinicore.causal_softmax(input._underlying))
 
     _infinicore.causal_softmax_(out._underlying, input._underlying)
+
+    return out

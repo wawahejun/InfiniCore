@@ -14,40 +14,48 @@ from framework.utils import is_broadcast
 # ==============================================================================
 
 # Test cases format: (shape, a_strides, b_strides, c_strides)
-# SwiGLU operates element-wise on two tensors of the same shape: output = a * b * sigmoid(b)
 _TEST_CASES_DATA = [
-    # Basic 2D SwiGLU
-    ((2, 4), None, None, None),
-    ((128, 64), None, None, None),
-    # 3D SwiGLU
-    ((2, 4, 8), None, None, None),
-    ((4, 48, 6), None, None, None),
-    # Strided tensors
-    ((1, 2048), (4096, 1), (4096, 1), (4096, 1)),
-    ((6, 2560), (2048, 1), (1, 2048), (2560, 1)),
-    # Mixed cases
-    ((8, 16, 32), None, None, None),
+    # Basic cases
+    ((13, 4), None, None, None),
+    ((13, 4), (10, 1), (10, 1), None),
+    # Strided cases
+    ((13, 4), None, None, (10, 1)),
+    ((13, 4), (10, 1), (10, 1), (10, 1)),
+    # 3D cases
+    ((13, 4, 4), None, None, None),
+    ((13, 4, 4), (20, 4, 1), (20, 4, 1), None),
+    # Broadcast cases
+    ((13, 4, 4), (4, 0, 1), (0, 4, 1), None),
     # Large tensors
     ((16, 5632), None, None, None),
-    ((4, 4, 5632), None, None, None),
+    ((16, 5632), (13312, 1), (13312, 1), None),
 ]
 
-# Tolerance configuration
+# Tolerance configuration - exact match required for bitwise operations
 _TOLERANCE_MAP = {
-    infinicore.float16: {"atol": 1e-3, "rtol": 1e-3},
-    infinicore.float32: {"atol": 1e-5, "rtol": 1e-5},
-    infinicore.bfloat16: {"atol": 5e-3, "rtol": 1e-2},
+    infinicore.int8: {"atol": 0, "rtol": 0},
+    infinicore.int16: {"atol": 0, "rtol": 0},
+    infinicore.int32: {"atol": 0, "rtol": 0},
+    infinicore.int64: {"atol": 0, "rtol": 0},
+    infinicore.uint8: {"atol": 0, "rtol": 0},
+    infinicore.bool: {"atol": 0, "rtol": 0},
 }
 
-# Data types to test
-_TENSOR_DTYPES = [infinicore.float16, infinicore.bfloat16, infinicore.float32]
+# Data types to test - integer types for bitwise operations
+_TENSOR_DTYPES = [
+    infinicore.int8,
+    infinicore.int16,
+    infinicore.int32,
+    infinicore.int64,
+    infinicore.uint8,
+    infinicore.bool,  # XOR also supports boolean tensors
+]
 
 
 def parse_test_cases():
     """
-    Parse SwiGLU test case data according to format:
-    (shape, a_strides, b_strides, c_strides)
-    SwiGLU is a two-input operation: output = a * b * sigmoid(b)
+    Parse test case data and return list of TestCase objects for all operation types.
+    Each test case contains all necessary information for execution and validation.
     """
     test_cases = []
 
@@ -58,13 +66,13 @@ def parse_test_cases():
         c_strides = data[3] if len(data) > 3 else None
 
         # Check if tensors support in-place operations
-        a_supports_inplace = not is_broadcast(a_strides) and a_strides == b_strides
-        b_supports_inplace = not is_broadcast(b_strides) and a_strides == b_strides
+        a_supports_inplace = not is_broadcast(a_strides)
+        b_supports_inplace = not is_broadcast(b_strides)
         c_supports_inplace = not is_broadcast(c_strides)
 
         # Generate test cases for all data types
         for dtype in _TENSOR_DTYPES:
-            tolerance = _TOLERANCE_MAP.get(dtype, {"atol": 1e-5, "rtol": 1e-4})
+            tolerance = _TOLERANCE_MAP.get(dtype, {"atol": 0, "rtol": 0})
 
             # Create typed tensor specs
             a_spec = TensorSpec.from_tensor(shape, a_strides, dtype)
@@ -79,11 +87,11 @@ def parse_test_cases():
                     output_spec=None,
                     comparison_target=None,
                     tolerance=tolerance,
-                    description=f"SwiGLU - OUT_OF_PLACE",
+                    description=f"BitwiseXor - OUT_OF_PLACE",
                 )
             )
 
-            # Test Case 2: In-place with explicit output tensor (swiglu(a, b, out=c))
+            # Test Case 2: In-place with explicit output tensor (bitwise_xor(a, b, out=c))
             if c_supports_inplace:
                 test_cases.append(
                     TestCase(
@@ -92,11 +100,11 @@ def parse_test_cases():
                         output_spec=c_spec,  # Specify the output tensor spec
                         comparison_target="out",
                         tolerance=tolerance,
-                        description=f"SwiGLU - INPLACE(out)",
+                        description=f"BitwiseXor - INPLACE(out)",
                     )
                 )
 
-            # Test Case 3: In-place on first input (swiglu(a, b, out=a))
+            # Test Case 3: In-place on first input (bitwise_xor(a, b, out=a))
             if a_supports_inplace:
                 test_cases.append(
                     TestCase(
@@ -105,11 +113,11 @@ def parse_test_cases():
                         output_spec=None,
                         comparison_target=0,  # Compare first input
                         tolerance=tolerance,
-                        description=f"SwiGLU - INPLACE(a)",
+                        description=f"BitwiseXor - INPLACE(a)",
                     )
                 )
 
-            # Test Case 4: In-place on second input (swiglu(a, b, out=b))
+            # Test Case 4: In-place on second input (bitwise_xor(a, b, out=b))
             if b_supports_inplace:
                 test_cases.append(
                     TestCase(
@@ -118,7 +126,7 @@ def parse_test_cases():
                         output_spec=None,
                         comparison_target=1,  # Compare second input
                         tolerance=tolerance,
-                        description=f"SwiGLU - INPLACE(b)",
+                        description=f"BitwiseXor - INPLACE(b)",
                     )
                 )
 
@@ -126,27 +134,21 @@ def parse_test_cases():
 
 
 class OpTest(BaseOperatorTest):
-    """SwiGLU operator test with simplified implementation"""
+    """Bitwise XOR operator test with simplified implementation"""
 
     def __init__(self):
-        super().__init__("SwiGLU")
+        super().__init__("BitwiseXor")
 
     def get_test_cases(self):
         return parse_test_cases()
 
-    def torch_operator(self, a, b, out=None, **kwargs):
-        """PyTorch SwiGLU implementation: a * b * sigmoid(b)"""
-        sigmoid_b = torch.sigmoid(b)
-        result = a * b * sigmoid_b
+    def torch_operator(self, *args, **kwargs):
+        """PyTorch bitwise_xor implementation"""
+        return torch.bitwise_xor(*args, **kwargs)
 
-        if out is not None:
-            out.copy_(result)
-            return out
-        return result
-
-    def infinicore_operator(self, a, b, out=None, **kwargs):
-        """InfiniCore SwiGLU implementation"""
-        return infinicore.swiglu(a, b, out=out)
+    # def infinicore_operator(self, *args, **kwargs):
+    #     """InfiniCore bitwise_xor implementation"""
+    #     return infinicore.bitwise_xor(*args, **kwargs)
 
 
 def main():

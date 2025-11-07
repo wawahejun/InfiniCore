@@ -11,3 +11,5 @@ def rms_norm(input, weight, epsilon=1e-5, *, out=None):
     _infinicore.rms_norm_(
         out._underlying, input._underlying, weight._underlying, epsilon
     )
+
+    return out

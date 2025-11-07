@@ -7,3 +7,5 @@ def matmul(input, other, *, out=None):
         return Tensor(_infinicore.matmul(input._underlying, other._underlying))
 
     _infinicore.matmul_(out._underlying, input._underlying, other._underlying)
+
+    return out
