@@ -9,33 +9,49 @@ from .utils import (
     profile_operation,
     rearrange_tensor,
     convert_infinicore_to_torch,
+    get_operator_help_info,
+    print_operator_testing_tips,
 )
-from .config import get_test_devices, get_args
+from .config import (
+    get_args,
+    get_hardware_args_group,
+    get_hardware_help_text,
+    get_supported_hardware_platforms,
+    get_test_devices,
+)
 from .devices import InfiniDeviceEnum, InfiniDeviceNames, torch_device_map
 from .datatypes import to_torch_dtype, to_infinicore_dtype
 from .runner import GenericTestRunner
 
 __all__ = [
-    "TensorSpec",
+    # Core types and classes
+    "BaseOperatorTest",
+    "GenericTestRunner",
+    "InfiniDeviceEnum",
+    "InfiniDeviceNames",
     "TensorInitializer",
+    "TensorSpec",
+    "TestCase",
     "TestConfig",
     "TestRunner",
-    "TestCase",
-    "BaseOperatorTest",
+    # Core functions
     "compare_results",
-    "create_test_comparator",
     "convert_infinicore_to_torch",
+    "create_test_comparator",
     "debug",
     "get_args",
+    "get_hardware_args_group",
+    "get_hardware_help_text",
+    "get_operator_help_info",
+    "get_supported_hardware_platforms",
     "get_test_devices",
     "get_tolerance",
     "infinicore_tensor_from_torch",
+    "print_operator_testing_tips",
     "profile_operation",
     "rearrange_tensor",
-    "InfiniDeviceEnum",
-    "InfiniDeviceNames",
-    "torch_device_map",
-    "to_torch_dtype",
+    # Utility functions
     "to_infinicore_dtype",
-    "GenericTestRunner",
+    "to_torch_dtype",
+    "torch_device_map",
 ]

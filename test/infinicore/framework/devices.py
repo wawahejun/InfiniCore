@@ -22,7 +22,6 @@ InfiniDeviceNames = {
     InfiniDeviceEnum.HYGON: "Hygon",
 }
 
-# Mapping that maps InfiniDeviceEnum to torch device string
 torch_device_map = {
     InfiniDeviceEnum.CPU: "cpu",
     InfiniDeviceEnum.NVIDIA: "cuda",

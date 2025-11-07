@@ -50,6 +50,13 @@ git clone --recursive https://github.com/InfiniTensor/InfiniCore.git
 git submodule update --init --recursive
 ```
 
+配置`INFINI_ROOT` 和 `LD_LIBRARY_PATH` 环境变量。  
+默认`INFINI_ROOT`为`$HOME/.infini`，可以使用以下命令自动配置：
+
+```shell
+source scripts/set_env_linux.sh
+```
+
 如果你需要在本地开发九齿算子（即需要对九齿算子库进行修改），推荐单独克隆[九齿算子库](https://github.com/InfiniTensor/ntops)，并从本地安装：
 
 ```shell
@@ -147,10 +154,6 @@ python scripts/install.py [XMAKE_CONFIG_FLAGS]
    ```shell
    xmake build && xmake install
    ```
-
-3. 设置环境变量
-
-   按输出提示设置 `INFINI_ROOT` 和 `LD_LIBRARY_PATH` 环境变量。
 
 #### 2. 安装 C++ 库
 
