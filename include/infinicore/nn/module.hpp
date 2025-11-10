@@ -23,6 +23,8 @@ public:
 protected:
     Tensor register_parameter(const std::string &name, Parameter param);
 
+    Tensor register_buffer(const std::string &name, Parameter buffer);
+
     // Add an existing submodule to this module's hierarchy
     // Template parameter M must be a type derived from Module
     // Returns the submodule for convenience (allows method chaining)
@@ -72,6 +74,7 @@ protected:
 protected:
     Device device_;
     std::unordered_map<std::string, std::shared_ptr<Module>> submodules_;
+    std::unordered_map<std::string, Parameter> buffers_;
     std::unordered_map<std::string, Parameter> parameters_;
 
 private:
@@ -133,5 +136,16 @@ private:
 #define INFINICORE_NN_PARAMETER_INIT(name, args) \
     name##_ = infinicore::nn::Parameter args; \
     this->register_parameter(#name, name##_)
+
+// Declare a buffer member variable
+#define INFINICORE_NN_BUFFER(name) \
+    infinicore::nn::Parameter name##_
+
+// Initialize a buffer in constructor
+// Usage: INFINICORE_NN_BUFFER_INIT(name, (shape, dtype, device))
+// Example: INFINICORE_NN_BUFFER_INIT(cache, ({max_seq_len, head_dim}, DataType::F32, device))
+#define INFINICORE_NN_BUFFER_INIT(name, args) \
+    name##_ = infinicore::nn::Parameter args; \
+    this->register_buffer(#name, name##_)
 
 } // namespace infinicore::nn

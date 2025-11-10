@@ -7,7 +7,9 @@ namespace infinicore::test {
 TestResult NNModuleTest::testBasicModuleCreation() {
     return measureTime("BasicModuleOperations", [this]() {
         try {
-            spdlog::info("=== Testing Basic Module Operations ===");
+            spdlog::info("==========================================");
+            spdlog::info("Testing Basic Module Operations");
+            spdlog::info("==========================================");
 
             // Test 1a: Module creation and parameter registration
             spdlog::info("Test 1a: Module creation and parameter registration");
@@ -117,7 +119,9 @@ TestResult NNModuleTest::testBasicModuleCreation() {
 TestResult NNModuleTest::testLoadStateDict() {
     return measureTime("AdvancedLoadStateDict", [this]() {
         try {
-            spdlog::info("=== Testing Advanced load_state_dict with Hierarchical Modules ===");
+            spdlog::info("==========================================");
+            spdlog::info("Testing Advanced load_state_dict with Hierarchical Modules");
+            spdlog::info("==========================================");
 
             // Test: Deep nesting (2-level hierarchy)
             spdlog::info("Test 4: Testing load_state_dict with 2-level deep nesting");
@@ -304,13 +308,11 @@ TestResult NNModuleTest::testModuleHierarchy() {
             // layer1.sublayer.weight, layer1.sublayer.bias,
             // layer1.layer2.sublayer.weight, layer1.layer2.sublayer.bias
             if (root_state_dict.size() < 6) {
-                std::cout << "Error: Expected at least 6 parameters in hierarchy, got "
-                          << root_state_dict.size() << std::endl;
+                spdlog::error("Error: Expected at least 6 parameters in hierarchy, got {}", root_state_dict.size());
                 return false;
             }
 
-            std::cout << "Module hierarchy test passed. Root state dict has "
-                      << root_state_dict.size() << " parameters" << std::endl;
+            spdlog::info("Module hierarchy test passed. Root state dict has {} parameters", root_state_dict.size());
 
             // Print the hierarchy
             std::cout << "Module hierarchy:" << std::endl;
@@ -350,7 +352,7 @@ TestResult NNModuleTest::testModuleHierarchy() {
 
             return true;
         } catch (const std::exception &e) {
-            std::cout << "Exception in testModuleHierarchy: " << e.what() << std::endl;
+            spdlog::error("Exception in testModuleHierarchy: {}", e.what());
             return false;
         }
     });
@@ -360,6 +362,9 @@ TestResult NNModuleTest::testModuleHierarchy() {
 TestResult NNModuleTest::testParameterLoading() {
     return measureTime("ParameterLoading", [this]() {
         try {
+            spdlog::info("==========================================");
+            spdlog::info("Testing Parameter loading from blob");
+            spdlog::info("==========================================");
             MockLinearModule module(3, 2, infinicore::Device());
 
             // Create test data
@@ -370,19 +375,19 @@ TestResult NNModuleTest::testParameterLoading() {
             module.load_parameter_from_blob("weight", weight_data.data());
             module.load_parameter_from_blob("bias", bias_data.data());
 
-            std::cout << "Successfully loaded parameters from blob data" << std::endl;
+            spdlog::info("Successfully loaded parameters from blob data");
 
             // Verify parameters exist
             auto state_dict = module.state_dict();
             if (state_dict.find("weight") == state_dict.end() || state_dict.find("bias") == state_dict.end()) {
-                std::cout << "Error: Parameters not found after loading" << std::endl;
+                spdlog::error("Error: Parameters not found after loading");
                 return false;
             }
 
-            std::cout << "Parameter loading test passed" << std::endl;
+            spdlog::info("Parameter loading test passed");
             return true;
         } catch (const std::exception &e) {
-            std::cout << "Exception in testParameterLoading: " << e.what() << std::endl;
+            spdlog::error("Exception in testParameterLoading: {}", e.what());
             return false;
         }
     });
@@ -393,7 +398,9 @@ TestResult NNModuleTest::testModuleLinear() {
     return measureTime("ModuleLinear", [this]() {
         try {
             // Test with bias
+            spdlog::info("==========================================");
             spdlog::info("Testing Linear module with bias (8->4 features)");
+            spdlog::info("==========================================");
             infinicore::nn::Linear m1(8, 4, true);
             auto sd1 = m1.state_dict();
             if (sd1.find("weight") == sd1.end()) {
@@ -679,7 +686,9 @@ TestResult NNModuleTest::testModuleLinear() {
 TestResult NNModuleTest::testModuleEmbedding() {
     return measureTime("ModuleEmbedding", [this]() {
         try {
+            spdlog::info("==========================================");
             spdlog::info("Testing Embedding module implementation");
+            spdlog::info("==========================================");
 
             // Test 1: Basic embedding creation
             spdlog::info("Test 1: Basic embedding creation (vocab=100, dim=64)");
@@ -830,7 +839,9 @@ TestResult NNModuleTest::testModuleEmbedding() {
 TestResult NNModuleTest::testModuleRMSNorm() {
     return measureTime("ModuleRMSNorm", [this]() {
         try {
+            spdlog::info("==========================================");
             spdlog::info("Testing RMSNorm module implementation");
+            spdlog::info("==========================================");
 
             // Test 1: Basic RMSNorm creation
             spdlog::info("Test 1: Basic RMSNorm creation (hidden_size=768)");
@@ -923,8 +934,25 @@ TestResult NNModuleTest::testModuleRMSNorm() {
 
             spdlog::debug("extra_repr test passed");
 
-            // Test 7: Different hidden sizes
-            spdlog::info("Test 7: Testing different hidden sizes");
+            // Test 7: Input validation - normalized_shape mismatch (op layer handles this)
+            spdlog::info("Test 7: Testing input validation - normalized_shape mismatch");
+            auto input_wrong_shape = infinicore::Tensor::ones({4, 512}, infinicore::DataType::F32, infinicore::Device()); // normalized_shape=512, expected 768
+
+            try {
+                norm1.forward(input_wrong_shape);
+                spdlog::error("Should have thrown exception for normalized_shape mismatch");
+                return false;
+            } catch (const std::exception &e) {
+                spdlog::debug("Correctly caught exception for normalized_shape mismatch (handled by op layer): {}", e.what());
+            } catch (...) {
+                spdlog::error("Caught unexpected exception type");
+                return false;
+            }
+
+            spdlog::debug("Normalized_shape mismatch validation test passed");
+
+            // Test 8: Different hidden sizes
+            spdlog::info("Test 8: Testing different hidden sizes");
             infinicore::nn::RMSNorm norm_small(128, 1e-5);
             infinicore::nn::RMSNorm norm_large(4096);
 
@@ -956,11 +984,316 @@ TestResult NNModuleTest::testModuleRMSNorm() {
     });
 }
 
+// Test 7.5: RoPE module test
+TestResult NNModuleTest::testModuleRoPE() {
+    return measureTime("ModuleRoPE", [this]() {
+        try {
+            spdlog::info("==========================================");
+            spdlog::info("Testing RoPE module implementation");
+            spdlog::info("==========================================");
+
+            // Test 1: Basic RoPE creation
+            spdlog::info("Test 1: Basic RoPE creation (head_dim=128, max_seq_len=2048)");
+            infinicore::nn::RoPE rope1(128, 2048);
+
+            auto state1 = rope1.state_dict();
+
+            if (rope1.head_dim() != 128) {
+                spdlog::error("head_dim mismatch. Expected 128, got {}", rope1.head_dim());
+                return false;
+            }
+
+            if (rope1.max_seq_len() != 2048) {
+                spdlog::error("max_seq_len mismatch. Expected 2048, got {}", rope1.max_seq_len());
+                return false;
+            }
+
+            spdlog::debug("Basic RoPE creation passed");
+
+            // Test 2: Forward pass - 3D input [seq_len, n_head, head_dim]
+            spdlog::info("Test 2: Forward pass with 3D input [seq_len, n_head, head_dim]");
+            auto x_3d = infinicore::Tensor::ones({32, 32, 128}, infinicore::DataType::F32, infinicore::Device());
+
+            // Create position tensor [0, 1, 2, ..., 31]
+            std::vector<int32_t> pos_data(32);
+            for (size_t i = 0; i < 32; i++) {
+                pos_data[i] = static_cast<int32_t>(i);
+            }
+            auto pos = infinicore::Tensor::from_blob(pos_data.data(), {32}, infinicore::DataType::I32, infinicore::Device());
+
+            auto x_out = rope1.forward(x_3d, pos);
+
+            if (x_out->shape() != std::vector<size_t>({32, 32, 128})) {
+                spdlog::error("3D output shape mismatch. Expected {{32, 32, 128}}");
+                return false;
+            }
+
+            spdlog::debug("3D forward pass passed. Output shape: {{32, 32, 128}}");
+
+            // Test 3: Different algorithms
+            spdlog::info("Test 3: Testing different algorithms");
+            infinicore::nn::RoPE rope_gptj(64, 1024, 10000.0, infinicore::nn::RoPE::Algo::GPT_J);
+            infinicore::nn::RoPE rope_gptneox(64, 1024, 10000.0, infinicore::nn::RoPE::Algo::GPT_NEOX);
+
+            if (rope_gptj.algo() != infinicore::nn::RoPE::Algo::GPT_J) {
+                spdlog::error("GPT_J algorithm not set correctly");
+                return false;
+            }
+
+            if (rope_gptneox.algo() != infinicore::nn::RoPE::Algo::GPT_NEOX) {
+                spdlog::error("GPT_NEOX algorithm not set correctly");
+                return false;
+            }
+
+            auto x_test = infinicore::Tensor::ones({10, 32, 64}, infinicore::DataType::F32, infinicore::Device());
+
+            std::vector<int32_t> pos_test_data(10);
+            for (size_t i = 0; i < 10; i++) {
+                pos_test_data[i] = static_cast<int32_t>(i);
+            }
+            auto pos_test = infinicore::Tensor::from_blob(pos_test_data.data(), {10}, infinicore::DataType::I32, infinicore::Device());
+
+            auto x_gptj = rope_gptj.forward(x_test, pos_test);
+            auto x_neox = rope_gptneox.forward(x_test, pos_test);
+
+            if (x_gptj->shape() != x_test->shape()) {
+                spdlog::error("GPT_J forward pass shape mismatch");
+                return false;
+            }
+
+            if (x_neox->shape() != x_test->shape()) {
+                spdlog::error("GPT_NEOX forward pass shape mismatch");
+                return false;
+            }
+
+            spdlog::debug("Different algorithms test passed");
+
+            // Test 4: Different theta values
+            spdlog::info("Test 4: Testing different theta values");
+            infinicore::nn::RoPE rope_theta1(128, 2048, 1e5);
+            infinicore::nn::RoPE rope_theta2(128, 2048, 1e4);
+
+            if (rope_theta1.theta() != 1e5) {
+                spdlog::error("theta mismatch. Expected 1e5, got {}", rope_theta1.theta());
+                return false;
+            }
+
+            if (rope_theta2.theta() != 1e4) {
+                spdlog::error("theta mismatch. Expected 1e4, got {}", rope_theta2.theta());
+                return false;
+            }
+
+            spdlog::debug("Different theta values test passed");
+
+            // Test 5: load_state_dict
+            std::unordered_map<std::string, infinicore::Tensor> new_state;
+            rope1.load_state_dict(new_state);
+            spdlog::debug("load_state_dict for RoPE passed (no parameters to load)");
+
+            // Test 6: extra_repr
+            spdlog::info("Test 6: Testing extra_repr");
+            std::string repr = rope1.extra_repr();
+            spdlog::debug("RoPE repr: {}", repr);
+
+            if (repr.find("head_dim=128") == std::string::npos) {
+                spdlog::error("extra_repr should contain head_dim");
+                return false;
+            }
+
+            if (repr.find("max_seq_len=2048") == std::string::npos) {
+                spdlog::error("extra_repr should contain max_seq_len");
+                return false;
+            }
+
+            if (repr.find("theta=") == std::string::npos) {
+                spdlog::error("extra_repr should contain theta");
+                return false;
+            }
+
+            spdlog::debug("extra_repr test passed");
+
+            // Test 7: Different head dimensions
+            spdlog::info("Test 7: Testing different head dimensions");
+            infinicore::nn::RoPE rope_small(64, 1024);
+            infinicore::nn::RoPE rope_large(256, 4096);
+
+            auto x_small = infinicore::Tensor::ones({10, 32, 64}, infinicore::DataType::F32, infinicore::Device());
+
+            std::vector<int32_t> pos_small_data(10);
+            for (size_t i = 0; i < 10; i++) {
+                pos_small_data[i] = static_cast<int32_t>(i);
+            }
+            auto pos_small = infinicore::Tensor::from_blob(pos_small_data.data(), {10}, infinicore::DataType::I32, infinicore::Device());
+
+            auto x_small_out = rope_small.forward(x_small, pos_small);
+
+            if (x_small_out->shape() != std::vector<size_t>({10, 32, 64})) {
+                spdlog::error("Small RoPE output shape mismatch");
+                return false;
+            }
+
+            auto x_large = infinicore::Tensor::ones({20, 32, 256}, infinicore::DataType::F32, infinicore::Device());
+
+            std::vector<int32_t> pos_large_data(20);
+            for (size_t i = 0; i < 20; i++) {
+                pos_large_data[i] = static_cast<int32_t>(i);
+            }
+            auto pos_large = infinicore::Tensor::from_blob(pos_large_data.data(), {20}, infinicore::DataType::I32, infinicore::Device());
+
+            auto x_large_out = rope_large.forward(x_large, pos_large);
+
+            if (x_large_out->shape() != std::vector<size_t>({20, 32, 256})) {
+                spdlog::error("Large RoPE output shape mismatch");
+                return false;
+            }
+
+            spdlog::debug("Different head dimensions test passed");
+
+            // Test 8: Invalid head_dim (odd number)
+            spdlog::info("Test 8: Testing invalid head_dim (odd number)");
+            try {
+                infinicore::nn::RoPE rope_invalid(127, 2048);
+                spdlog::error("Should have thrown exception for odd head_dim");
+                return false;
+            } catch (const std::invalid_argument &e) {
+                spdlog::debug("Correctly caught exception for odd head_dim: {}", e.what());
+            } catch (...) {
+                spdlog::error("Caught unexpected exception type");
+                return false;
+            }
+
+            spdlog::debug("Invalid head_dim test passed");
+
+            // Test 9: Input validation - empty tensor (op layer handles this)
+            spdlog::info("Test 9: Testing input validation - empty tensor");
+            auto x_empty = infinicore::Tensor::ones({}, infinicore::DataType::F32, infinicore::Device());
+            std::vector<int32_t> pos_empty_data(1);
+            pos_empty_data[0] = 0;
+            auto pos_empty = infinicore::Tensor::from_blob(pos_empty_data.data(), {1}, infinicore::DataType::I32, infinicore::Device());
+
+            try {
+                rope1.forward(x_empty, pos_empty);
+                spdlog::error("Should have thrown exception for empty input tensor");
+                return false;
+            } catch (const std::exception &e) {
+                spdlog::debug("Correctly caught exception for empty input (handled by op layer): {}", e.what());
+            } catch (...) {
+                spdlog::error("Caught unexpected exception type");
+                return false;
+            }
+
+            spdlog::debug("Empty tensor validation test passed");
+
+            // Test 10: Input validation - head_dim mismatch (op layer handles this)
+            spdlog::info("Test 10: Testing input validation - head_dim mismatch");
+            auto x_wrong_dim = infinicore::Tensor::ones({32, 32, 64}, infinicore::DataType::F32, infinicore::Device()); // head_dim=64, expected 128
+            std::vector<int32_t> pos_wrong_data(32);
+            for (size_t i = 0; i < 32; i++) {
+                pos_wrong_data[i] = static_cast<int32_t>(i);
+            }
+            auto pos_wrong = infinicore::Tensor::from_blob(pos_wrong_data.data(), {32}, infinicore::DataType::I32, infinicore::Device());
+
+            try {
+                rope1.forward(x_wrong_dim, pos_wrong);
+                spdlog::error("Should have thrown exception for head_dim mismatch");
+                return false;
+            } catch (const std::exception &e) {
+                spdlog::debug("Correctly caught exception for head_dim mismatch (handled by op layer): {}", e.what());
+            } catch (...) {
+                spdlog::error("Caught unexpected exception type");
+                return false;
+            }
+
+            spdlog::debug("Head_dim mismatch validation test passed");
+
+            // Test 11: Different input shapes (from reference test cases)
+            spdlog::info("Test 11: Testing different input shapes");
+
+            // Test shape (1, 32, 128) - single sequence
+            auto x_single = infinicore::Tensor::ones({1, 32, 128}, infinicore::DataType::F32, infinicore::Device());
+            std::vector<int32_t> pos_single_data(1);
+            pos_single_data[0] = 0;
+            auto pos_single = infinicore::Tensor::from_blob(pos_single_data.data(), {1}, infinicore::DataType::I32, infinicore::Device());
+            auto x_single_out = rope1.forward(x_single, pos_single);
+            if (x_single_out->shape() != std::vector<size_t>({1, 32, 128})) {
+                spdlog::error("Single sequence output shape mismatch");
+                return false;
+            }
+
+            // Test shape (10, 32, 64) - different head_dim
+            auto rope_64 = infinicore::nn::RoPE(64, 1024);
+            auto x_64 = infinicore::Tensor::ones({10, 32, 64}, infinicore::DataType::F32, infinicore::Device());
+            std::vector<int32_t> pos_64_data(10);
+            for (size_t i = 0; i < 10; i++) {
+                pos_64_data[i] = static_cast<int32_t>(i);
+            }
+            auto pos_64 = infinicore::Tensor::from_blob(pos_64_data.data(), {10}, infinicore::DataType::I32, infinicore::Device());
+            auto x_64_out = rope_64.forward(x_64, pos_64);
+            if (x_64_out->shape() != std::vector<size_t>({10, 32, 64})) {
+                spdlog::error("Shape (10, 32, 64) output mismatch");
+                return false;
+            }
+
+            // Test shape (4, 1, 32) - single head
+            auto rope_32 = infinicore::nn::RoPE(32, 1024);
+            auto x_1head = infinicore::Tensor::ones({4, 1, 32}, infinicore::DataType::F32, infinicore::Device());
+            std::vector<int32_t> pos_1head_data(4);
+            for (size_t i = 0; i < 4; i++) {
+                pos_1head_data[i] = static_cast<int32_t>(i);
+            }
+            auto pos_1head = infinicore::Tensor::from_blob(pos_1head_data.data(), {4}, infinicore::DataType::I32, infinicore::Device());
+            auto x_1head_out = rope_32.forward(x_1head, pos_1head);
+            if (x_1head_out->shape() != std::vector<size_t>({4, 1, 32})) {
+                spdlog::error("Shape (4, 1, 32) output mismatch");
+                return false;
+            }
+
+            spdlog::debug("Different input shapes test passed");
+
+            // Test 12: Position tensor validation
+            spdlog::info("Test 12: Testing position tensor edge cases");
+
+            // Test with seq_len less than max_seq_len
+            auto x_short = infinicore::Tensor::ones({10, 32, 128}, infinicore::DataType::F32, infinicore::Device());
+            std::vector<int32_t> pos_short_data(10);
+            for (size_t i = 0; i < 10; i++) {
+                pos_short_data[i] = static_cast<int32_t>(i);
+            }
+            auto pos_short = infinicore::Tensor::from_blob(pos_short_data.data(), {10}, infinicore::DataType::I32, infinicore::Device());
+            auto x_short_out = rope1.forward(x_short, pos_short);
+            if (x_short_out->shape() != std::vector<size_t>({10, 32, 128})) {
+                spdlog::error("Short sequence output shape mismatch");
+                return false;
+            }
+
+            spdlog::debug("Position tensor edge cases test passed");
+
+            // Test 13: Test that outputs are on the same device as inputs
+            spdlog::info("Test 13: Testing device consistency");
+            auto device = x_3d->device();
+            if (x_out->device() != device) {
+                spdlog::error("Output tensor not on the same device as input");
+                return false;
+            }
+            spdlog::debug("Device consistency test passed");
+
+            spdlog::info("All RoPE module tests passed!");
+            return true;
+
+        } catch (const std::exception &e) {
+            spdlog::error("Exception in testModuleRoPE: {}", e.what());
+            return false;
+        }
+    });
+}
+
 // Test 8: Dtype assertion test
 TestResult NNModuleTest::testDtypeAssertion() {
     return measureTime("DtypeAssertionTest", [this]() {
         try {
+            spdlog::info("==========================================");
             spdlog::info("Testing dtype assertions when loading parameters");
+            spdlog::info("==========================================");
 
             // Test 1: Successful load with matching dtype
             spdlog::info("Test 1: Successful load with matching dtype (F32)");
@@ -1382,6 +1715,7 @@ TestResult NNModuleTest::run() {
     results.push_back(testModuleLinear());          // Linear module comprehensive test
     results.push_back(testModuleEmbedding());       // Embedding module test
     results.push_back(testModuleRMSNorm());         // RMSNorm module test
+    results.push_back(testModuleRoPE());            // RoPE module test
     results.push_back(testDtypeAssertion());        // Dtype assertion test
     results.push_back(testTinyLlamaConstruction()); // Comprehensive: TinyLlama model test
 

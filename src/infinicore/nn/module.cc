@@ -55,6 +55,11 @@ Tensor Module::register_parameter(const std::string &name, Parameter param) {
     return param;
 }
 
+Tensor Module::register_buffer(const std::string &name, Parameter buffer) {
+    buffers_[name] = buffer;
+    return buffer;
+}
+
 void Module::collect_all_parameters(std::unordered_map<std::string, Parameter> &all_params, const std::string &prefix) const {
     // Add direct parameters with the given prefix
     for (const auto &[param_name, param] : parameters_) {
