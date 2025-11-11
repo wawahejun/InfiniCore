@@ -2,55 +2,54 @@
 
 #include "../../utils.h"
 
-#include <hccl.h>
-#include <hcr/hc_runtime_api.h>
+#include <mccl.h>
+#include <mcc/mcc_api.h>
 
 #include <iostream>
 #include <vector>
 
-#define CHECK_HCCL(API__) CHECK_INTERNAL(API__, hcclSuccess)
+#define CHECK_HCCL(API__) CHECK_INTERNAL(API__, MCCL_SUCCESS)
 
-inline hcStream_t getMacaStream(infinirtStream_t stream) {
+inline mcc_stream_t getMacaStream(infinirtStream_t stream) {
     if (stream == nullptr) {
         return 0;
     }
-    return static_cast<hcStream_t>(stream);
+    return static_cast<mcc_stream_t>(stream);
 }
 
-inline hcclDataType_t getHcclDtype(infiniDtype_t datatype) {
+inline mcclDataType_t getHcclDtype(infiniDtype_t datatype) {
     switch (datatype) {
     case INFINI_DTYPE_F32:
-        return hcclFloat;
+        return mcclFloat;
     case INFINI_DTYPE_F16:
-        return hcclHalf;
+        return mcclHalf;
     case INFINI_DTYPE_BF16:
-        return hcclBfloat16;
+        return mcclBfloat16;
     default:
-        std::abort();
-        return hcclHalf;
+        return mcclHalf;
     }
 }
 
-inline hcclRedOp_t getHcclRedOp(infinicclReduceOp_t op) {
+inline mcclRedOp_t getHcclRedOp(infinicclReduceOp_t op) {
     switch (op) {
     case INFINICCL_SUM:
-        return hcclSum;
+        return mcclSum;
     case INFINICCL_PROD:
-        return hcclProd;
+        return mcclProd;
     case INFINICCL_MAX:
-        return hcclMax;
+        return mcclMax;
     case INFINICCL_MIN:
-        return hcclMin;
+        return mcclMin;
     case INFINICCL_AVG:
-        return hcclAvg;
+        return mcclAvg;
     default:
         std::abort();
-        return hcclSum;
+        return mcclSum;
     }
 }
 
-inline hcclComm_t getHcclComm(infinicclComm_t comm) {
-    return static_cast<hcclComm_t>(comm->comm);
+inline mcclComm_t getHcclComm(infinicclComm_t comm) {
+    return static_cast<mcclComm_t>(comm->comm);
 }
 
 namespace infiniccl::metax {
@@ -60,8 +59,8 @@ infiniStatus_t commInitAll(
     int ndevice,
     const int *device_ids) {
 
-    std::vector<hcclComm_t> hccl_comms(ndevice);
-    CHECK_HCCL(hcclCommInitAll(hccl_comms.data(), ndevice, (int const *)device_ids));
+    std::vector<mcclComm_t> hccl_comms(ndevice);
+    CHECK_HCCL(mcclCommInitAll(hccl_comms.data(), ndevice, (int const *)device_ids));
 
     for (int i = 0; i < ndevice; i++) {
         comms[i] = new InfinicclComm{INFINI_DEVICE_METAX, device_ids[i], (void *)(hccl_comms[i])};
@@ -71,7 +70,7 @@ infiniStatus_t commInitAll(
 }
 
 infiniStatus_t commDestroy(infinicclComm_t comm) {
-    CHECK_HCCL(hcclCommDestroy(getHcclComm(comm)));
+    CHECK_HCCL(mcclCommDestroy(getHcclComm(comm)));
     delete comm;
     return INFINI_STATUS_SUCCESS;
 }
@@ -87,7 +86,7 @@ infiniStatus_t allReduce(
 
     CHECK_DTYPE(datatype, INFINI_DTYPE_F32, INFINI_DTYPE_F16, INFINI_DTYPE_BF16);
 
-    CHECK_HCCL(hcclAllReduce(sendbuf, recvbuf, count, getHcclDtype(datatype),
+    CHECK_HCCL(mcclAllReduce(sendbuf, recvbuf, count, getHcclDtype(datatype),
                              getHcclRedOp(op), getHcclComm(comm), getMacaStream(stream)));
 
     return INFINI_STATUS_SUCCESS;

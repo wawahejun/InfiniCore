@@ -1,127 +1,134 @@
 #include "infinirt_metax.h"
 #include "../../utils.h"
-#include <hcr/hc_runtime.h>
-#include <hcr/hc_runtime_api.h>
+#include <mcc/mcc_api.h>
+#include <mcblas/mcblas.h>
 
-#define CHECK_MACART(RT_API) CHECK_INTERNAL(RT_API, hcSuccess)
+#define CHECK_MACART(RT_API) CHECK_INTERNAL(RT_API, mcSuccess)
 
 namespace infinirt::metax {
 infiniStatus_t getDeviceCount(int *count) {
-    CHECK_MACART(hcGetDeviceCount(count));
+    CHECK_MACART(mcGetDeviceCount(count));
     return INFINI_STATUS_SUCCESS;
 }
 
 infiniStatus_t setDevice(int device_id) {
-    CHECK_MACART(hcSetDevice(device_id));
+    CHECK_MACART(mcSetDevice(device_id));
     return INFINI_STATUS_SUCCESS;
 }
 
 infiniStatus_t deviceSynchronize() {
-    CHECK_MACART(hcDeviceSynchronize());
+    CHECK_MACART(mcDeviceSynchronize());
     return INFINI_STATUS_SUCCESS;
 }
 
 infiniStatus_t streamCreate(infinirtStream_t *stream_ptr) {
-    hcStream_t stream;
-    CHECK_MACART(hcStreamCreate(&stream));
-    *stream_ptr = stream;
+    mcStream_t stream;
+    CHECK_MACART(mcStreamCreate(&stream));
+    *stream_ptr = reinterpret_cast<infinirtStream_t>(stream);
     return INFINI_STATUS_SUCCESS;
 }
 
 infiniStatus_t streamDestroy(infinirtStream_t stream) {
-    CHECK_MACART(hcStreamDestroy((hcStream_t)stream));
+    CHECK_MACART(mcStreamDestroy((mcStream_t)stream));
     return INFINI_STATUS_SUCCESS;
 }
 
 infiniStatus_t streamSynchronize(infinirtStream_t stream) {
-    CHECK_MACART(hcStreamSynchronize((hcStream_t)stream));
+    CHECK_MACART(mcStreamSynchronize((mcStream_t)stream));
     return INFINI_STATUS_SUCCESS;
 }
 
 infiniStatus_t streamWaitEvent(infinirtStream_t stream, infinirtEvent_t event) {
-    CHECK_MACART(hcStreamWaitEvent((hcStream_t)stream, (hcEvent_t)event));
+    CHECK_MACART(mcStreamWaitEvent((mcStream_t)stream, (mcEvent_t)event));
     return INFINI_STATUS_SUCCESS;
 }
 
 infiniStatus_t eventCreate(infinirtEvent_t *event_ptr) {
-    hcEvent_t event;
-    CHECK_MACART(hcEventCreate(&event));
-    *event_ptr = event;
+    mcEvent_t event;
+    CHECK_MACART(mcEventCreate(&event));
+    *event_ptr = reinterpret_cast<infinirtEvent_t>(event);
     return INFINI_STATUS_SUCCESS;
 }
 
 infiniStatus_t eventRecord(infinirtEvent_t event, infinirtStream_t stream) {
-    CHECK_MACART(hcEventRecord((hcEvent_t)event, (hcStream_t)stream));
+    CHECK_MACART(mcEventRecord((mcEvent_t)event, (mcStream_t)stream));
     return INFINI_STATUS_SUCCESS;
 }
 
 infiniStatus_t eventQuery(infinirtEvent_t event, infinirtEventStatus_t *status_ptr) {
-    CHECK_MACART(hcEventQuery((hcEvent_t)event));
+    auto result = mcEventQuery((mcEvent_t)event);
+    if (result == mcSuccess) {
+        *status_ptr = INFINIRT_EVENT_COMPLETE;
+    } else if (result == mcErrorNotReady) {
+        *status_ptr = INFINIRT_EVENT_NOT_READY;
+    } else {
+        return INFINI_STATUS_INTERNAL_ERROR;
+    }
     return INFINI_STATUS_SUCCESS;
 }
 
 infiniStatus_t eventSynchronize(infinirtEvent_t event) {
-    CHECK_MACART(hcEventSynchronize((hcEvent_t)event));
+    CHECK_MACART(mcEventSynchronize((mcEvent_t)event));
     return INFINI_STATUS_SUCCESS;
 }
 
 infiniStatus_t eventDestroy(infinirtEvent_t event) {
-    CHECK_MACART(hcEventDestroy((hcEvent_t)event));
+    CHECK_MACART(mcEventDestroy((mcEvent_t)event));
     return INFINI_STATUS_SUCCESS;
 }
 
 infiniStatus_t mallocDevice(void **p_ptr, size_t size) {
-    CHECK_MACART(hcMalloc(p_ptr, size));
+    CHECK_MACART(mcMalloc(p_ptr, size));
     return INFINI_STATUS_SUCCESS;
 }
 
 infiniStatus_t mallocHost(void **p_ptr, size_t size) {
-    CHECK_MACART(hcMallocHost(p_ptr, size));
+    CHECK_MACART(mcMallocHost(p_ptr, size));
     return INFINI_STATUS_SUCCESS;
 }
 
 infiniStatus_t freeDevice(void *ptr) {
-    CHECK_MACART(hcFree(ptr));
+    CHECK_MACART(mcFree(ptr));
     return INFINI_STATUS_SUCCESS;
 }
 
 infiniStatus_t freeHost(void *ptr) {
-    CHECK_MACART(hcFreeHost(ptr));
+    CHECK_MACART(mcFreeHost(ptr));
     return INFINI_STATUS_SUCCESS;
 }
 
-hcMemcpyKind toMacaMemcpyKind(infinirtMemcpyKind_t kind) {
+mcMemcpyKind toMacaMemcpyKind(infinirtMemcpyKind_t kind) {
     switch (kind) {
     case INFINIRT_MEMCPY_H2D:
-        return hcMemcpyHostToDevice;
+        return mcMemcpyHostToDevice;
     case INFINIRT_MEMCPY_D2H:
-        return hcMemcpyDeviceToHost;
+        return mcMemcpyDeviceToHost;
     case INFINIRT_MEMCPY_D2D:
-        return hcMemcpyDeviceToDevice;
+        return mcMemcpyDeviceToDevice;
     case INFINIRT_MEMCPY_H2H:
-        return hcMemcpyHostToHost;
+        return mcMemcpyHostToHost;
     default:
-        return hcMemcpyDefault;
+        return mcMemcpyDefault;
     }
 }
 
 infiniStatus_t memcpy(void *dst, const void *src, size_t size, infinirtMemcpyKind_t kind) {
-    CHECK_MACART(hcMemcpy(dst, src, size, toMacaMemcpyKind(kind)));
+    CHECK_MACART(mcMemcpy(dst, src, size, toMacaMemcpyKind(kind)));
     return INFINI_STATUS_SUCCESS;
 }
 
 infiniStatus_t memcpyAsync(void *dst, const void *src, size_t size, infinirtMemcpyKind_t kind, infinirtStream_t stream) {
-    CHECK_MACART(hcMemcpyAsync(dst, src, size, toMacaMemcpyKind(kind), (hcStream_t)stream));
+    CHECK_MACART(mcMemcpyAsync(dst, src, size, toMacaMemcpyKind(kind), (mcStream_t)stream));
     return INFINI_STATUS_SUCCESS;
 }
 
 infiniStatus_t mallocAsync(void **p_ptr, size_t size, infinirtStream_t stream) {
-    CHECK_MACART(hcMallocAsync(p_ptr, size, (hcStream_t)stream));
+    CHECK_MACART(mcMallocAsync(p_ptr, size, (mcStream_t)stream));
     return INFINI_STATUS_SUCCESS;
 }
 
 infiniStatus_t freeAsync(void *ptr, infinirtStream_t stream) {
-    CHECK_MACART(hcFreeAsync(ptr, (hcStream_t)stream));
+    CHECK_MACART(mcFreeAsync(ptr, (mcStream_t)stream));
     return INFINI_STATUS_SUCCESS;
 }
 } // namespace infinirt::metax

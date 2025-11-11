@@ -2,7 +2,7 @@
 local MACA_ROOT = os.getenv("MACA_PATH") or os.getenv("MACA_HOME") or os.getenv("MACA_ROOT")
 add_includedirs(MACA_ROOT .. "/include")
 add_linkdirs(MACA_ROOT .. "/lib")
-add_links("hcdnn", "hcblas", "hcruntime")
+add_links("mcdnn", "mcblas", "mcruntime")
 
 rule("maca")
     set_extensions(".maca")
@@ -14,10 +14,19 @@ rule("maca")
     on_build_file(function (target, sourcefile)
         local objectfile = target:objectfile(sourcefile)
         os.mkdir(path.directory(objectfile))
-        local htcc = path.join(MACA_ROOT, "htgpu_llvm/bin/htcc")
+        local mxcc = path.join(MACA_ROOT, "mxgpu_llvm/bin/mxcc")  -- 正确的mxcc路径
+        if not os.isfile(mxcc) then
+            -- 如果mxcc不存在，尝试htcc作为后备
+            mxcc = path.join(MACA_ROOT, "htgpu_llvm/bin/htcc")
+        end
         local includedirs = table.concat(target:get("includedirs"), " ")
 
-        local args = { "-x", "hpcc", "-c", sourcefile, "-o", objectfile, "-I" .. MACA_ROOT .. "/include", "-O3", "-fPIC", "-Werror", "-std=c++17"}
+        local args = { "-c", sourcefile, "-o", objectfile, "-I" .. MACA_ROOT .. "/include", "-O3", "-fPIC", "-Werror", "-std=c++17"}
+        -- 如果是htcc，添加hpcc参数；如果是mxcc，不需要这个参数
+        if mxcc:find("htcc") then
+            table.insert(args, 1, "-x")
+            table.insert(args, 2, "hpcc")
+        end
 
         for _, includedir in ipairs(target:get("includedirs")) do
             table.insert(args, "-I" .. includedir)
@@ -28,7 +37,7 @@ rule("maca")
             table.insert(args, "-D" .. define)
         end
 
-        os.execv(htcc, args)
+        os.execv(mxcc, args)
         table.insert(target:objectfiles(), objectfile)
     end)
 rule_end()
@@ -53,7 +62,7 @@ target("infinirt-metax")
     on_install(function (target) end)
     add_deps("infini-utils")
     set_warnings("all", "error")
-    add_cxflags("-lstdc++ -fPIC")
+    add_cxflags("-lstdc++ -fPIC", "-Wno-strict-aliasing")
     add_files("../src/infinirt/metax/*.cc")
 target_end()
 
@@ -66,7 +75,7 @@ target("infiniccl-metax")
         add_cxflags("-fPIC")
     end
     if has_config("ccl") then
-        add_links("libhccl.so")
+        add_links("libmccl.so")
         add_files("../src/infiniccl/metax/*.cc")
     end
     set_languages("cxx17")
