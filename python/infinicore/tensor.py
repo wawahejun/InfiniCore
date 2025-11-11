@@ -77,7 +77,7 @@ class Tensor:
 
     def debug(self, filename=None):
         """Print tensor data or save to file for debugging
-        
+
         Args:
             filename: Optional filename to save raw binary data. If None, prints to stdout.
         """
@@ -91,6 +91,16 @@ def empty(size, *, dtype=None, device=None, pin_memory=False):
     return Tensor(
         _infinicore.empty(size, dtype._underlying, device._underlying, pin_memory)
     )
+
+
+def empty_like(input, *, dtype=None, device=None):
+    if dtype is None:
+        dtype = input.dtype
+
+    if device is None:
+        device = input.device
+
+    return empty(input.size(), dtype=dtype, device=device)
 
 
 def strided_empty(size, strides, *, dtype=None, device=None, pin_memory=False):

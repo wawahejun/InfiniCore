@@ -1,5 +1,6 @@
 import contextlib
 
+import infinicore.nn as nn
 from infinicore.device import device
 from infinicore.dtype import (
     bfloat16,
@@ -33,6 +34,7 @@ from infinicore.ops.rearrange import rearrange
 from infinicore.tensor import (
     Tensor,
     empty,
+    empty_like,
     from_blob,
     ones,
     strided_empty,
@@ -40,12 +42,13 @@ from infinicore.tensor import (
     zeros,
 )
 
-from infinicore import nn as nn
-
 __all__ = [
+    # Modules.
+    "nn",
     # Classes.
     "device",
     "dtype",
+    "Tensor",
     # Data Types.
     "bfloat16",
     "bool",
@@ -75,6 +78,7 @@ __all__ = [
     "matmul",
     "rearrange",
     "empty",
+    "empty_like",
     "from_blob",
     "ones",
     "strided_empty",
